@@ -53,7 +53,7 @@ def get_interface_info(device_config, interfaces):
 
 
 
-def  get_interface_host_info(device_config, interfaces):
+"""def  get_interface_host_info(device_config, interfaces):
     if not device_config or not interfaces:
         return []
     
@@ -68,13 +68,6 @@ def  get_interface_host_info(device_config, interfaces):
         net_connect = ConnectHandler(**device)
         print(f"Successfully connected to {device['host']} for host info")
 
-        """for interface in interfaces:
-            command = f"show mac address-table interface {interface}"
-            interface_output = net_connect.send_command(command)
-            output_list.append(f"{interface_output}")
-
-        net_connect.disconnect()"""
-
         for interface in interfaces:
             command = f"show run int {interface}"
             print(command)
@@ -86,9 +79,57 @@ def  get_interface_host_info(device_config, interfaces):
     except Exception as e:
         print(f"An error occurred during information retrieval: {e}")
 
+    return output_list"""
+
+def get_interface_info_privileged(config_filepath, interfaces):
+    """
+    Returns:
+        list: A list of strings, where each string contains the output of the
+              'show interface' command for a specific interface after entering
+              enable mode. Returns an empty list if connection fails, no
+              interfaces are provided, or enable mode cannot be reached.
+    """
+    if not interfaces:
+        return []
+
+    device_config = read_device_config(config_filepath)
+    if not device_config:
+        return []
+
+    device = {
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+        **device_config
+    }
+    output_list = []
+
+    try:
+        net_connect = ConnectHandler(**device)
+        print(f"Successfully connected to {device['host']}")
+
+        # Check if enable mode is required and attempt to enter
+        if device.get("secret"):
+            try:
+                net_connect.enable()
+                print(f"Successfully entered enable mode on {device['host']}")
+            except netmiko.NetmikoAuthenticationException as e:
+                print(f"Error entering enable mode on {device['host']}: {e}")
+                net_connect.disconnect()
+                return []
+        else:
+            print(f"No enable secret provided for {device['host']}, assuming no enable required.")
+
+        for interface in interfaces:
+            command = f"show interface {interface}"
+            interface_output = net_connect.send_command(command)
+            output_list.append(f"{interface_output}")
+
+        net_connect.disconnect()
+
+    except Exception as e:
+        print(f"An error occurred during information retrieval from {device['host']}: {e}")
+
     return output_list
-
-
 
 
 
@@ -192,3 +233,19 @@ main()
 endTime=datetime.now()
 final_time=endTime-startTime
 print(final_time)
+
+##--------parse_interface_info
+#interface_info['interface_name']  - Interface Name,                              eg, GigabitEthernet1/0/1  
+#interface_info['last_input']      - Interface last comunication input,           eg, 00:01:00 , Never
+#interface_info['last_output ']    - Interface last comunication output,          eg, 00:01:00 , Never
+#interface_info['log_time']        - Time of the logging,                         eg, DD-MM-YYYY HH:MM:SS:MS
+#interface_info['description']     - Interface description,                       eg, ofta_pc2_ts-pb015
+#interface_info['duplex_status']   - Interface status of Duple                    eg, Full-duplex , Half-duplex , Auto-duplex
+#interface_info['speed']           - Interface speed                              eg, 10Mb/s , 100Mb/s , 1Gb/s , Auto-Speed
+#interface_info['state']           - Administrative status of the interface       eg, Not Connected , Shutdown , Connected , Unknown , NULL 
+
+
+#--------get_interface_host_info
+#interface_host_info['switchport'] - Interface Switchport type                    eg, Mode Access , Mode trunk
+#interface_host_info['vlan']       - Interface vlan                               eg, Trunk , 180 , 186 , 20 ...
+#interface_host_info['']
