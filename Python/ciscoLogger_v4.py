@@ -2,6 +2,8 @@ from netmiko import ConnectHandler
 import json
 import re
 from datetime import datetime
+import time
+startTime=datetime.now()
 
 def read_device_config(filepath):
     try:
@@ -35,7 +37,7 @@ def get_interface_info(device_config, interfaces):
 
     try:
         net_connect = ConnectHandler(**device)
-        print(f"Successfully connected to {device['host']} via Telnet")
+        print(f"Successfully connected to {device['host']} for interface status")
 
         for interface in interfaces:
             command = f"show interface {interface}"
@@ -43,12 +45,55 @@ def get_interface_info(device_config, interfaces):
             output_list.append(f"{interface_output}")
 
         net_connect.disconnect()
-        print("Telnet connection closed.")
 
     except Exception as e:
         print(f"An error occurred during information retrieval: {e}")
 
     return output_list
+
+
+
+def  get_interface_host_info(device_config, interfaces):
+    if not device_config or not interfaces:
+        return []
+    
+    device = {
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+        **device_config
+    }
+    output_list = []
+
+    try:
+        net_connect = ConnectHandler(**device)
+        print(f"Successfully connected to {device['host']} for host info")
+
+        """for interface in interfaces:
+            command = f"show mac address-table interface {interface}"
+            interface_output = net_connect.send_command(command)
+            output_list.append(f"{interface_output}")
+
+        net_connect.disconnect()"""
+
+        for interface in interfaces:
+            command = f"show run int {interface}"
+            print(command)
+            interface_output = net_connect.send_command(command)
+            output_list.append(f"{interface_output}")
+
+        net_connect.disconnect()
+
+    except Exception as e:
+        print(f"An error occurred during information retrieval: {e}")
+
+    return output_list
+
+
+
+
+
+
+
 
 
 def parse_interface_info(interface_text):
@@ -121,6 +166,7 @@ def main():
 
     #Recollim les dades de les interfaces, cada interface a un element de llista:
     interface_outputs = get_interface_info(device_info, target_interfaces)
+    interface_host_outputs = get_interface_host_info(device_info, target_interfaces)
     #print(interface_outputs)
 
     for i in interface_outputs:
@@ -128,5 +174,21 @@ def main():
         parsed_ints=parse_interface_info(i)
         print(parsed_ints)
 
+    for i in interface_host_outputs:
+        print(i)
 
 main()
+
+
+
+
+
+
+
+
+
+
+
+endTime=datetime.now()
+final_time=endTime-startTime
+print(final_time)
