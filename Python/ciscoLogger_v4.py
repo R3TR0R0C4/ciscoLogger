@@ -107,7 +107,6 @@ def get_interface_info_privileged(config_filepath, interfaces):
         net_connect = ConnectHandler(**device)
         print(f"Successfully connected to {device['host']}")
 
-        # Check if enable mode is required and attempt to enter
         if device.get("secret"):
             try:
                 net_connect.enable()
@@ -207,7 +206,7 @@ def main():
 
     #Recollim les dades de les interfaces, cada interface a un element de llista:
     interface_outputs = get_interface_info(device_info, target_interfaces)
-    interface_host_outputs = get_interface_host_info(device_info, target_interfaces)
+    interface_host_outputs = get_interface_info_privileged(config_file, target_interfaces)
     #print(interface_outputs)
 
     for i in interface_outputs:
