@@ -15,8 +15,8 @@ CREATE TABLE switch_interface_log_180_238 (
 );
 
 
-
-CREATE TABLE interface_stats (
+CREATE DATABASE ciscoLogger;
+CREATE TABLE ciscoLogger.interface_stats (
     id INT AUTO_INCREMENT PRIMARY KEY,
     interface_name VARCHAR(255) NOT NULL,
     last_input DATETIME,
@@ -31,7 +31,26 @@ CREATE TABLE interface_stats (
     switchport BOOLEAN,
     admin_status VARCHAR(50),
     port_mode VARCHAR(50),
-    native_vlan VARCHAR(50),
+    INDEX (interface_name, log_time),
+    INDEX (status, log_time),
+    INDEX (vlan)
+);
+
+
+CREATE TABLE ciscoLogger.interface_stats (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    interface_name VARCHAR(255) NOT NULL,
+    last_input VARCHAR(255),
+    last_output VARCHAR(255),
+    log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(255),
+    duplex_status VARCHAR(50),
+    speed VARCHAR(50),
+    vlan VARCHAR(50),
+    mac VARCHAR(50),
+    status VARCHAR(50),
+    switchport varchar(255),
+    switch VARCHAR(255)
     INDEX (interface_name, log_time),
     INDEX (status, log_time),
     INDEX (vlan)

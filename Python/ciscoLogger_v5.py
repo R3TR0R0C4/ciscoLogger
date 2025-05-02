@@ -3,7 +3,8 @@ import netmiko
 import json
 import re
 from datetime import datetime
-import time
+import mariadb
+
 startTime=datetime.now()
 
 def read_device_config(filepath):
@@ -172,14 +173,61 @@ def parse_interface_info(interface_text, interface_host_text):
     else:
         interface_info['switchport_mode'] = None
         interface_info['vlan'] = None
-    #interface_info.append(interface_info)
 
-
-
+    interface_info['switch'] = "192.168.180.238"
 
     return interface_info
 
+def mariadb_import(db_host, db_user, db_password, db_name, interface_data):
+    try:
+        conn = mariadb.connect(
+            host=db_host,
+            user=db_user,
+            password=db_password,
+            database=db_name
+        )
+        cursor = conn.cursor()
+    
+        # The SQL INSERT statement
+        insert_query = """
+        INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport, switch)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+    
+        for item in interface_data:
+            # Map the dictionary keys to the table columns
+            interface_name = item.get('interface_name')
+            last_input = item.get('last_input')
+            last_output = item.get('last_output')
+            log_time = item.get('log_time')
+            description = item.get('description')
+            duplex_status = item.get('duplex_status')
+            speed = item.get('speed')
+            vlan = item.get('vlan')
+            status = item.get('state')  # Assuming 'state' in your data maps to 'status' in the table
+            switchport_mode = item.get('switchport_mode')
+            switch = item.get('switch')
+    
+            # Execute the insert statement
+            try:
+                cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport_mode, switch))
+            except mariadb.Error as e:
+                print(f"Error inserting record: {e}")
+                print(f"Problematic data: {item}")
+                conn.rollback() # Rollback the transaction if an error occurs
+    
+        # Commit the changes
+        conn.commit()
+        print(f"{cursor.rowcount} records inserted successfully.")
 
+    except mariadb.Error as e:
+        print(f"Error connecting to MariaDB: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        # Close the connection
+        if conn:
+            conn.close()
 
 
 def main():
@@ -203,16 +251,18 @@ def main():
     for i in range(len(interface_outputs)):
         parsed_info = parse_interface_info(interface_outputs[i], interface_host_outputs[i])
         parsed_info_result.append(parsed_info) 
-    print(parsed_info_result)
+    #print(parsed_info_result)
+    
+    db_host = "localhost"
+    db_user = "logger"
+    db_password = "logger"
+    db_name = "ciscoLogger"
+
+    mariadb_import(db_host, db_user, db_password, db_name, parsed_info_result)
+
+
 
 main()
-
-
-
-
-
-
-
 
 
 
@@ -236,3 +286,6 @@ print(final_time)
 #interface_host_info['switchport'] - Interface Switchport type                    eg, Mode Access , Mode trunk
 #interface_host_info['vlan']       - Interface vlan                               eg, Trunk , 180 , 186 , 20 ...
 #interface_host_info['']
+
+
+#{'interface_name': 'gigabitethernet1/0/1', 'last_input': 'never', 'last_output': 'never', 'log_time': '2025-05-02 09:29:33', 'description': 'NULL', 'duplex_status': 'Auto-duplex', 'speed': 'Auto-speed', 'state': 'Shutdown', 'mac': 'NULL', 'switchport_mode': None, 'vlan': None}}

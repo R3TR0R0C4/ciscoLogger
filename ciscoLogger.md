@@ -6,6 +6,7 @@
     * regex per extreure informació de cada 
 * ciscoLogger_v3.py
     * trencat, intent de integrar v2 amb regex
-
 * ciscoLogger_v4.py
-
+    * acabat diccionari amb tota la info
+* ciscoLogger_v5.py
+    * Afegir importació cap a mariadb
