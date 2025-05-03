@@ -3,6 +3,7 @@ import netmiko
 import json
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import mariadb
 
 startTime=datetime.now()
@@ -22,10 +23,12 @@ def read_device_config(filepath):
 
 def get_interface_info(device_config, interfaces):
     """
-    Returns:
-        list: A list of strings, where each string contains the output of the
-              'show interface' command for a specific interface. Returns an
-              empty list if connection fails or no interfaces are provided.
+    Inputs:
+        device_config: The telnet information to connect to the device        
+        interfaces: List of interfaces to query
+    Sortida:
+        output_list: List with each item being the result of the query
+        'show interface' of each interface given by var 'interfaces'
     """
     if not device_config or not interfaces:
         return []
@@ -40,6 +43,8 @@ def get_interface_info(device_config, interfaces):
     try:
         net_connect = ConnectHandler(**device)
         print(f"Successfully connected to {device['host']} for interface status")
+        
+        print("Collecting interface status information")
 
         for interface in interfaces:
             command = f"show interface {interface}"
@@ -49,23 +54,24 @@ def get_interface_info(device_config, interfaces):
         net_connect.disconnect()
 
     except Exception as e:
-        print(f"An error occurred during information retrieval: {e}")
+        print(f"There was a problem collecting information on regular mode: {e}")
 
     return output_list
 
 
-def get_interface_info_privileged(config_filepath, interfaces):
+def get_interface_info_privileged(device_config, interfaces):
     """
-    Returns:
-        list: A list of strings, where each string contains the output of the
-              'show interface' command for a specific interface after entering
-              enable mode. Returns an empty list if connection fails, no
-              interfaces are provided, or enable mode cannot be reached.
+    Inputs:
+        device_config: The telnet information to connect to the device        
+        interfaces: List of interfaces to query
+    Sortida:
+        output_list: List with each item being the result of the query
+        'show run interface' of each interface given by var 'interfaces'
     """
     if not interfaces:
         return []
 
-    device_config = read_device_config(config_filepath)
+    device_config = read_device_config(device_config)
     if not device_config:
         return []
 
@@ -78,8 +84,7 @@ def get_interface_info_privileged(config_filepath, interfaces):
 
     try:
         net_connect = ConnectHandler(**device)
-        print(f"Successfully connected to {device['host']}")
-
+        print(f"Connection with privileges successful: {device['host']}")
         if device.get("secret"):
             try:
                 net_connect.enable()
@@ -90,6 +95,8 @@ def get_interface_info_privileged(config_filepath, interfaces):
                 return []
         else:
             print(f"No enable secret provided for {device['host']}, assuming no enable required.")
+        
+        print("Collecting host information")
 
         for interface in interfaces:
             command = f"show run interface {interface}"
@@ -99,17 +106,18 @@ def get_interface_info_privileged(config_filepath, interfaces):
         net_connect.disconnect()
 
     except Exception as e:
-        print(f"An error occurred during information retrieval from {device['host']}: {e}")
+        print(f"There was a problem connecting with privileged mode to: {device['host']}: {e}")
 
     return output_list
 
 def parse_interface_info(interface_text, interface_host_text):
     """
     Parses the text output of a network interface and extracts relevant information.
-    Args:
-        interface_text: A string containing the output of a 'show interface' command for a single interface.
+    Inputs:
+        interface_text: List where each item is the result of 'show run'
+        interface_host_text: List where each item is the result of 'show run interface'
     Returns:
-        A dictionary containing the extracted interface information.
+        interface_info: Dictionary with the extracted information 
     """
     interface_info = {}
 
@@ -117,30 +125,30 @@ def parse_interface_info(interface_text, interface_host_text):
     interface_name_match = re.search(r'^(\S+) is', interface_text, re.MULTILINE)
     interface_info['interface_name'] = interface_name_match.group(1).lower() if interface_name_match else "NULL"
 
-    # Extract last input
+    # Extract last input time
     last_input_match = re.search(r'Last input (never|\d{2}:\d{2}:\d{2})', interface_text)
     interface_info['last_input'] = last_input_match.group(1) if last_input_match else "NULL"
 
-    # Extract last output
+    # Extract last output time
     last_output_match = re.search(r'output (never|\d{2}:\d{2}:\d{2})', interface_text)
     interface_info['last_output'] = last_output_match.group(1) if last_output_match else "NULL"
 
-    # Add current log time
-    interface_info['log_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Log time 
+    interface_info['log_time'] = datetime.now(ZoneInfo("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S")
 
-    # Extract description
+    # Description of the port
     description_match = re.search(r'Description: (.+)', interface_text)
     interface_info['description'] = description_match.group(1).strip() if description_match else "NULL"
 
-    # Extract duplex status
+    # Duplex type
     duplex_match = re.search(r'(Full-duplex|Half-duplex|Auto-duplex)', interface_text)
     interface_info['duplex_status'] = duplex_match.group(1) if duplex_match else "NULL"
 
-    # Extract speed
+    # Speed of the interface
     speed_match = re.search(r'(\d+Mb/s|\d+Gb/s|Auto-speed)', interface_text)
     interface_info['speed'] = speed_match.group(1) if speed_match else "NULL"
 
-    # Extract line status
+    # State of the interface
     state_match = re.search(r'is (down|administratively down|up), line protocol is (down|up)', interface_text)
     if state_match:
         admin_state = state_match.group(1)
@@ -156,29 +164,40 @@ def parse_interface_info(interface_text, interface_host_text):
     else:
         interface_info['state'] = "NULL"
 
+    #MAC interface of the connected device, set to NULL as no collection has been made yet
     interface_info['mac'] = "NULL"
     
+    # Switchport mode of the interface
     switchport_mode_match = re.search(r'switchport\s+mode\s+(access|trunk|dynamic\s+(auto|desirable))', interface_host_text, re.IGNORECASE)
     if switchport_mode_match:
-        mode = switchport_mode_match.group(1).title()  # Capitalize first letter
+        mode = switchport_mode_match.group(1).title()
         interface_info['switchport_mode'] = mode
         if mode == "Access":
             vlan_match = re.search(r'switchport\s+access\s+vlan\s+(\d+)', interface_host_text, re.IGNORECASE)
-            interface_info['vlan'] = int(vlan_match.group(1)) if vlan_match else None # Use None if no VLAN found
+            interface_info['vlan'] = int(vlan_match.group(1)) if vlan_match else None
         elif mode == "Trunk":
             trunk_vlan_match = re.search(r'switchport\s+trunk\s+allowed\s+vlan\s+(.+)', interface_host_text, re.IGNORECASE)
-            interface_info['vlan'] = trunk_vlan_match.group(1) if trunk_vlan_match else "No VLAN Filtering"#None # Use None if no VLANs found
+            interface_info['vlan'] = trunk_vlan_match.group(1) if trunk_vlan_match else "No VLAN Filtering"
         else:
-            interface_info['vlan'] = "N/A" # Or None
-    else:
-        interface_info['switchport_mode'] = None
+            interface_info['vlan'] = "N/A"
+    else: # exception if there is no switchport configurations
+        interface_info['switchport_mode'] = None 
         interface_info['vlan'] = None
 
-    interface_info['switch'] = "192.168.180.238"
+    interface_info['switch'] = "192.168.180.238" # Fixed IP of the switch (todo: implement reading of the current switch)
 
     return interface_info
 
+
 def mariadb_import(db_host, db_user, db_password, db_name, interface_data):
+    """
+    Inputs:
+        db_host, db_user, db_password, db_name: Information of the database connection
+        interface_data: list of dictionaries containing each of the interface's status
+    Returs:
+        Inserts to a mariadb database
+        prints of the results        
+    """
     try:
         conn = mariadb.connect(
             host=db_host,
@@ -193,7 +212,7 @@ def mariadb_import(db_host, db_user, db_password, db_name, interface_data):
         INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport, switch)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-    
+        insert_count=0
         for item in interface_data:
             # Map the dictionary keys to the table columns
             interface_name = item.get('interface_name')
@@ -215,10 +234,10 @@ def mariadb_import(db_host, db_user, db_password, db_name, interface_data):
                 print(f"Error inserting record: {e}")
                 print(f"Problematic data: {item}")
                 conn.rollback() # Rollback the transaction if an error occurs
-    
+            insert_count=+1
         # Commit the changes
         conn.commit()
-        print(f"{cursor.rowcount} records inserted successfully.")
+        print(f"{insert_count} records inserted successfully.")
 
     except mariadb.Error as e:
         print(f"Error connecting to MariaDB: {e}")
