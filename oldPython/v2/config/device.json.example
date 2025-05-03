@@ -1,0 +1,7 @@
+{
+    "device": {
+      "host": "switch_ip",
+      "username": "switch_user",
+      "password": "switch_password"
+    }
+  }
