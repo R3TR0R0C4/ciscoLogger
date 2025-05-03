@@ -1,0 +1,8 @@
+{
+  "database": {
+    "host": "localhost",
+    "username": "logger",
+    "password": "logger",
+    "database": "interface_stats"
+  }
+}
