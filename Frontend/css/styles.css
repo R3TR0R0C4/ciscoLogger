@@ -1,0 +1,86 @@
+/* styles.css - Styling for the login page */
+@font-face {
+    font-family: 'Hacked';
+    src: url('typography/HACKED/hacked.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.login-container {
+    background: white;
+    padding: 2rem 3rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+}
+.login-container h2 {
+    margin-bottom: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    text-align: center;
+}
+.input-group {
+    margin-bottom: 1rem;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #555;
+    font-size: 0.9rem;
+}
+.input-group input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+.input-group input:focus {
+    border-color: #1877f2;
+    outline: none;
+}
+.error-message {
+    color: #f44336;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+button {
+    width: 100%;
+    background-color: #1877f2;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 1rem;
+    padding: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.25s ease;
+}
+button:hover {
+    background-color: #165ec9;
+}
+@media (max-width: 400px) {
+    .login-container {
+        padding: 1.5rem 2rem;
+        max-width: 100%;
+    }
+}
+
+.ciscoLogger{
+    font-family: 'Hacked', Arial, sans-serif;
+}
