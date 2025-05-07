@@ -1,6 +1,7 @@
 import json
 import netmiko
 from netmiko import ConnectHandler 
+from os import path
 
 
 def read_json_configs(filepath, read_type):
@@ -9,7 +10,7 @@ def read_json_configs(filepath, read_type):
         <filepath> Takes a filepath of a .json
         <read_type> What is the json attribute to read (device or database)
     Return:
-
+        output_config: The configuration used to connect to switches and their information
     """
     try:
         with open(filepath, 'r') as f:
@@ -22,7 +23,7 @@ def read_json_configs(filepath, read_type):
         print(f"Error: format JSON no valid {filepath}")
         return None
     
-def get_interface_info(device_config, interface_name, interface_number):
+'''def get_interface_info(device_config, interface_name, interface_number):
     """
     Inputs:
         device_config: The telnet information to connect to the device        
@@ -65,7 +66,33 @@ def get_interface_info(device_config, interface_name, interface_number):
     except Exception as e:
         print(f"There was a problem collecting information on regular mode: {e}")
 
-    return output_list
+    return output_list'''
+
+def get_interface_info(device_config, switch_dic_position):
+    """
+    Inputs:
+        <device_config>: The dictionary where the information of the switch is read from
+        <switch_dic_position>: Position number on the dictionary of the switch
+    Returns:
+    """
+
+    if not device_config or switch_dic_position:
+        return[]
+
+    device = {
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+        **device_config
+    }
+    output_list = []
+
+    print(device_config["interface_names"])
+
+
+
+
+
+
 
 
 
@@ -74,20 +101,29 @@ def orchestrator():
     Orchestrates all other functions
     """
 
-    #1. Reading the json file for devices and saving it to <json_switch_details>
-    json_switch_filepath="config/devices.json"
+    # build of the pwd to open the directory config without problems
+    base_dir = path.dirname(path.abspath(__file__)) 
+    json_switch_filepath = path.join(base_dir, 'config', 'devices.json')
+    
+    #Reading the json file for devices and saving it to <json_switch_details>
     read_type='device'
     json_switch_details=read_json_configs(json_switch_filepath,read_type)
 
     #2. Executing retrieval of "show interfaces" for regular interfaces
-    regular_interfaces_names=json_switch_details['interface_names']
-    regular_interfaces_number=json_switch_details['interface_number']
+    """regular_interfaces_names=json_switch_details['interface_names']
+    regular_interfaces_number=json_switch_details['interface_number']"""
 
-    regular_interface_output=None
+    
+    for i in range(len(json_switch_details)):
+        print(json_switch_details[i])
+        get_interface_info(json_switch_details, i)
+
+    
+    """regular_interface_output=None
     for i in range (len(json_switch_details)):
         regular_interface_output.append(get_interface_info(json_switch_details, regular_interfaces_names, regular_interfaces_number))
 
     print(regular_interface_output)
-
+"""
 
 orchestrator()

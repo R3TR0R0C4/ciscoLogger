@@ -14,9 +14,9 @@
       * Afegir importació cap a mariadb
   * Python
     * ciscoLogger_v6.py
-      * Afegit, multiple switches a .json, mogut config de db a .json.
+      * Afegit, multiple switches a .json, mogut config de db a .json. WiP
 
 <br>
 
 * Frontend
-  * WebApp
+  * WebApp amb PHP, WiP
