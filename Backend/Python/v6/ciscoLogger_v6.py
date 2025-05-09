@@ -22,77 +22,52 @@ def read_json_configs(filepath, read_type):
     except json.JSONDecodeError:
         print(f"Error: format JSON no valid {filepath}")
         return None
-    
-'''def get_interface_info(device_config, interface_name, interface_number):
-    """
-    Inputs:
-        device_config: The telnet information to connect to the device        
-        interfaces: List of interfaces to query
-    Sortida:
-        output_list: List with each item being the result of the query
-        'show interface' of each interface given by var 'interfaces'
-    """
-    if not device_config or interface_number or interface_name:
-        return []
 
-    device = {
+def get_interface_info(device_details,interface_type, interface_number):
+    if not device_details:
+        return []
+    
+
+    conn_info = {
+        "host": device_details['host'],
+        "username": device_details['username'],
+        "password": device_details['password'],
         "device_type": "cisco_ios_telnet",
         "port": 23,
-        **device_config
     }
-    output_list = []
+
 
     try:
-        net_connect = ConnectHandler(**device)
-        print(f"Successfully connected to {device['host']} for interface status")
-        print("Collecting interface status information")
+        net_connect = ConnectHandler(**conn_info)
+
+        print(f"Retrieving interface information from {device_details['host']} for {interface_type}{interface_number}")
 
 
-        interfaces=[]
-        if interface_name=="GigabitEthernet1/0/":
-            for i in range(interface_number):
-                interfaces.append(f"GigabitEthernet1/0/{i}")
-        elif interface_name=="FastEthernet0/":
-            for i in range(interface_number):
-                interfaces.append(f"FastEthernet0/{i}")
+        start, end = map(int, interface_number.split("-"))
+        interface_range = range(start, end+1)
 
-        for interface in interfaces:
+        interfaces_to_query=[]
+        for interface in interface_range:
+            interfaces_to_query.append(f"{interface_type}{interface}")
+
+        interface=None
+        interface_output_list=[]
+        for interface in interfaces_to_query:
             command = f"show interface {interface}"
             interface_output = net_connect.send_command(command)
-            output_list.append(f"{interface_output}")
-
+            interface_output_list.append(f"{interface_output}")
         net_connect.disconnect()
 
+
     except Exception as e:
-        print(f"There was a problem collecting information on regular mode: {e}")
+        print(f"An error occurred: {e}")
+        if 'net_connect' in locals():
+            net_connect.disconnect()
 
-    return output_list'''
-
-def get_interface_info(device_config, switch_dic_position):
-    """
-    Inputs:
-        <device_config>: The dictionary where the information of the switch is read from
-        <switch_dic_position>: Position number on the dictionary of the switch
-    Returns:
-    """
-
-    if not device_config or switch_dic_position:
-        return[]
-
-    device = {
-        "device_type": "cisco_ios_telnet",
-        "port": 23,
-        **device_config
-    }
-    output_list = []
-
-    print(device_config["interface_names"])
+    return interface_output_list
 
 
-
-
-
-
+   
 
 
 
@@ -109,21 +84,14 @@ def orchestrator():
     read_type='device'
     json_switch_details=read_json_configs(json_switch_filepath,read_type)
 
-    #2. Executing retrieval of "show interfaces" for regular interfaces
-    """regular_interfaces_names=json_switch_details['interface_names']
-    regular_interfaces_number=json_switch_details['interface_number']"""
+    #Iterate list of Switches from the json
+    for switch_detail in json_switch_details: # type: ignore
+        #Get regular interface info
+        regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+        #Get uplink interfaces info
+        uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
 
-    
-    for i in range(len(json_switch_details)):
-        print(json_switch_details[i])
-        get_interface_info(json_switch_details, i)
 
-    
-    """regular_interface_output=None
-    for i in range (len(json_switch_details)):
-        regular_interface_output.append(get_interface_info(json_switch_details, regular_interfaces_names, regular_interfaces_number))
 
-    print(regular_interface_output)
-"""
 
 orchestrator()
