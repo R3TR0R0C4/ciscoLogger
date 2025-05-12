@@ -67,8 +67,6 @@ def get_interface_info(device_details,interface_type, interface_number):
     return interface_output_list
 
 
-   
-
 
 
 def orchestrator():
@@ -84,14 +82,21 @@ def orchestrator():
     read_type='device'
     json_switch_details=read_json_configs(json_switch_filepath,read_type)
 
+
+    switch_interface_detail=[]
     #Iterate list of Switches from the json
     for switch_detail in json_switch_details: # type: ignore
         #Get regular interface info
         regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+
+        
         #Get uplink interfaces info
         uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
+        for i in uplink_ints_results:#Append of all the uplink interfaces to the previous list to keep it all in one list
+            regular_ints_results.append(i)
 
+        #print(regular_ints_results) #List with all the switch interfaces info.
+        switch_interface_detail[switch_detail["host"]]=regular_ints_results
 
-
-
+    print(switch_interface_detail)
 orchestrator()
