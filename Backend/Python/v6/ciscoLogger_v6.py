@@ -99,4 +99,5 @@ def orchestrator():
         switch_interface_detail[switch_detail["host"]]=regular_ints_results
 
     print(switch_interface_detail)
+    
 orchestrator()
