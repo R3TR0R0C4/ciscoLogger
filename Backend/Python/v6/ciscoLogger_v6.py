@@ -79,6 +79,37 @@ def get_interface_info(device_details,interface_type,interface_number):
     return interface_output_list
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def regex_processor(interface_text, host):
     """
     Inputs:
@@ -174,7 +205,6 @@ def orchestrator():
     for switch_detail in json_switch_details: # type: ignore
         #Get regular interface info
         regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-
         
         #Get uplink interfaces info
         uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
@@ -186,8 +216,8 @@ def orchestrator():
         all_switch_data.append(switch_data)
 
 
-    for switch_dict in all_switch_data:
-        for hostname, interfaces in switch_dict.items():
+    for switch_dict in all_switch_data: # Gets each of the dictionaries with key:host value: list of interface info
+        for hostname, interfaces in switch_dict.items(): # Gets the 
             for interface_info in interfaces:
                 processed_info = regex_processor(interface_info, hostname)
                 print(processed_info)
