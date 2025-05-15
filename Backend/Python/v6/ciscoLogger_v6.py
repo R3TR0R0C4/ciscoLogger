@@ -79,38 +79,79 @@ def get_interface_info(device_details,interface_type,interface_number):
     return interface_output_list
 
 
+def get_interface_info_privileged(device_details, interface_type, interface_number):
+    """
+    Inputs:
+        <device_details> Dictionary with the connection details
+        <interface_type> Type of interface (either gigabitethernet or fasterthernet)
+        <interface_number> (number range ex 1-48 1-2)
+    Return:
+        List with the output of the command of each interface as one item
+    """
+    if not device_details:
+        return []
 
+    # Dict to make the connection info
+    conn_info = {
+        "host": device_details['host'],
+        "username": device_details['username'],
+        "password": device_details['password'],
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+        "global_delay_factor": 2 # Increased delay for potentially slow devices
+    }
 
+    # Add enable password directly to conn_info for robustness with Netmiko's enable()
+    if 'enable_password' in device_details:
+        conn_info['secret'] = device_details['enable_password']
 
+    net_connect = None # Initialize to None for error handling
 
+    try:
+        #print(f"Attempting to connect to {device_details['host']}")
+        net_connect = ConnectHandler(**conn_info)
+        
+        # Explicitly enter enable mode if an enable password was provided
+        # This uses the 'secret' passed in conn_info
+        if 'enable_password' in device_details:
+            net_connect.enable()
 
+        print(f"Retrieving interface privileged information from {device_details['host']} for {interface_type}{interface_number}")
 
+        # Transform the range (ex 1-48) to something usable ( range(1-49) )
+        start, end = map(int, interface_number.split("-"))
+        interface_range = range(start, end + 1)
 
+        # Command list
+        interfaces_to_query = []
+        for interface in interface_range:
+            interfaces_to_query.append(f"{interface_type}{interface}")
 
+        # Connection and retrieval of each interface
+        interface_output_list = []
+        for interface in interfaces_to_query:
+            command = f"show run interface {interface}"
+            #print(f"Executing command: '{command}' on {device_details['host']}") # Debug print
+            interface_output = net_connect.send_command(command)
+            interface_output_list.append(interface_output.strip()) # .strip() to clean whitespace
+        
+        net_connect.disconnect()
+        #print(f"Disconnected from {device_details['host']}")
 
+    except Exception as e:
+        print(f"An error occurred during connection or command execution for {device_details['host']}: {e}")
+        # Only attempt to disconnect if net_connect object was successfully created
+        if net_connect:
+            try:
+                net_connect.disconnect()
+                print(f"Attempted to disconnect from {device_details['host']} after error.")
+            except Exception as disconnect_e:
+                print(f"Error during disconnect from {device_details['host']}: {disconnect_e}")
+        interface_output_list = [f"Error on {device_details['host']}: {e}"] # Return error message to list for clarity
 
+    return interface_output_list
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def regex_processor(interface_text, host):
+def regex_processor(interface_text, privileged_interface_text, host):
     """
     Inputs:
         <switch_data> reciebes the switch data of each interface
@@ -163,23 +204,23 @@ def regex_processor(interface_text, host):
     #MAC interface of the connected device, set to NULL as no collection has been made yet
     interface_info['mac'] = "NULL"
     
-    """# Switchport mode of the interface
-    switchport_mode_match = re.search(r'switchport\s+mode\s+(access|trunk|dynamic\s+(auto|desirable))', interface_host_text, re.IGNORECASE)
+    # Switchport mode of the interface
+    switchport_mode_match = re.search(r'switchport\s+mode\s+(access|trunk|dynamic\s+(auto|desirable))', privileged_interface_text, re.IGNORECASE)
     if switchport_mode_match:
         mode = switchport_mode_match.group(1).title()
         interface_info['switchport_mode'] = mode
         if mode == "Access":
-            vlan_match = re.search(r'switchport\s+access\s+vlan\s+(\d+)', interface_host_text, re.IGNORECASE)
+            vlan_match = re.search(r'switchport\s+access\s+vlan\s+(\d+)', privileged_interface_text, re.IGNORECASE)
             interface_info['vlan'] = int(vlan_match.group(1)) if vlan_match else None
         elif mode == "Trunk":
-            trunk_vlan_match = re.search(r'switchport\s+trunk\s+allowed\s+vlan\s+(.+)', interface_host_text, re.IGNORECASE)
+            trunk_vlan_match = re.search(r'switchport\s+trunk\s+allowed\s+vlan\s+(.+)', privileged_interface_text, re.IGNORECASE)
             interface_info['vlan'] = trunk_vlan_match.group(1) if trunk_vlan_match else "No VLAN Filtering"
         else:
             interface_info['vlan'] = "N/A"
     else: # exception if there is no switchport configurations
         interface_info['switchport_mode'] = None 
         interface_info['vlan'] = None
-    """
+    
     interface_info['switch'] = host # Fixed IP of the switch (todo: implement reading of the current switch)
     
     return interface_info
@@ -199,26 +240,35 @@ def orchestrator():
     read_type='device'
     json_switch_details=read_json_configs(json_switch_filepath,read_type)
 
-
+    # Declaration of empty lists
     all_switch_data=[]
-    #Iterate list of Switches from the json
+    all_privileged_switch_data = []
+
+    # Iterate list of Switches from the json
     for switch_detail in json_switch_details: # type: ignore
-        #Get regular interface info
+        # Get regular interface info
         regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        
-        #Get uplink interfaces info
+        # Get Privileged interface info
+        privi_regular_ints_results=get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+
+        # Get uplink interfaces info
         uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
-        for i in uplink_ints_results:#Append of all the uplink interfaces to the previous list to keep it all in one list
+        # Get Privileged uplink info
+        privi_uplink_ints_results=get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+
+        for i in uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list
             regular_ints_results.append(i)
 
-        #print(regular_ints_results) #List with all the switch interfaces info.
-        switch_data = {switch_detail["host"]: regular_ints_results}
-        all_switch_data.append(switch_data)
+            
+        for i in privi_uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
+            privi_regular_ints_results.append(i)
 
 
-    for switch_dict in all_switch_data: # Gets each of the dictionaries with key:host value: list of interface info
-        for hostname, interfaces in switch_dict.items(): # Gets the 
-            for interface_info in interfaces:
-                processed_info = regex_processor(interface_info, hostname)
-                print(processed_info)
+        if len(regular_ints_results) != len(privi_regular_ints_results):
+            print("The result of the interfaces info lookup and privileged interfaces info did not match, quitting.")
+            exit
+        else:
+            for interface_run, privileged_interface_run in zip(regular_ints_results, privi_regular_ints_results):
+                print(regex_processor(interface_run, privileged_interface_run, switch_detail["host"]))
+        break
 orchestrator()
