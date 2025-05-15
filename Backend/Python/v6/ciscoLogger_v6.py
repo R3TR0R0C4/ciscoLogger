@@ -98,7 +98,7 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
         "password": device_details['password'],
         "device_type": "cisco_ios_telnet",
         "port": 23,
-        "global_delay_factor": 2 # Increased delay for potentially slow devices
+        "global_delay_factor": 2
     }
 
     # Add enable password directly to conn_info for robustness with Netmiko's enable()
@@ -108,11 +108,9 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
     net_connect = None # Initialize to None for error handling
 
     try:
-        #print(f"Attempting to connect to {device_details['host']}")
         net_connect = ConnectHandler(**conn_info)
-        
+
         # Explicitly enter enable mode if an enable password was provided
-        # This uses the 'secret' passed in conn_info
         if 'enable_password' in device_details:
             net_connect.enable()
 
@@ -131,12 +129,9 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
         interface_output_list = []
         for interface in interfaces_to_query:
             command = f"show run interface {interface}"
-            #print(f"Executing command: '{command}' on {device_details['host']}") # Debug print
             interface_output = net_connect.send_command(command)
             interface_output_list.append(interface_output.strip()) # .strip() to clean whitespace
-        
         net_connect.disconnect()
-        #print(f"Disconnected from {device_details['host']}")
 
     except Exception as e:
         print(f"An error occurred during connection or command execution for {device_details['host']}: {e}")
@@ -147,7 +142,7 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
                 print(f"Attempted to disconnect from {device_details['host']} after error.")
             except Exception as disconnect_e:
                 print(f"Error during disconnect from {device_details['host']}: {disconnect_e}")
-        interface_output_list = [f"Error on {device_details['host']}: {e}"] # Return error message to list for clarity
+        interface_output_list = [f"Error on {device_details['host']}: {e}"]
 
     return interface_output_list
 
@@ -221,7 +216,7 @@ def regex_processor(interface_text, privileged_interface_text, host):
         interface_info['switchport_mode'] = None 
         interface_info['vlan'] = None
     
-    interface_info['switch'] = host # Fixed IP of the switch (todo: implement reading of the current switch)
+    interface_info['switch'] = host
     
     return interface_info
 
@@ -239,10 +234,6 @@ def orchestrator():
     #Reading the json file for devices and saving it to <json_switch_details>
     read_type='device'
     json_switch_details=read_json_configs(json_switch_filepath,read_type)
-
-    # Declaration of empty lists
-    all_switch_data=[]
-    all_privileged_switch_data = []
 
     # Iterate list of Switches from the json
     for switch_detail in json_switch_details: # type: ignore
@@ -270,5 +261,5 @@ def orchestrator():
         else:
             for interface_run, privileged_interface_run in zip(regular_ints_results, privi_regular_ints_results):
                 print(regex_processor(interface_run, privileged_interface_run, switch_detail["host"]))
-        break
+
 orchestrator()
