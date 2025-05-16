@@ -1,5 +1,6 @@
 import json
 import netmiko
+import mariadb
 from netmiko import ConnectHandler 
 from os import path
 import re
@@ -304,7 +305,65 @@ def regex_processor(interface_text, privileged_interface_text, mac_interface_add
     
     return interface_info
 
+def mariadb_import(json_database_details, interface_data):
+    """
+    Inputs:
+        db_host, db_user, db_password, db_name: Information of the database connection
+        interface_data: list of dictionaries containing each of the interface's status
+    Returs:
+        Inserts to a mariadb database
+        prints of the results        
+    """
+    conn = None
+    try:
+        conn = mariadb.connect(
+            host=json_database_details['host'],
+            user=json_database_details['username'],
+            password=json_database_details['password'],
+            database=json_database_details['database']
+        )
+        cursor = conn.cursor()
+    
+        # The SQL INSERT statement
+        insert_query = """
+        INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport, switch)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        insert_count=0
+        for item in interface_data:
+            # Map the dictionary keys to the table columns
+            interface_name = item.get('interface_name')
+            last_input = item.get('last_input')
+            last_output = item.get('last_output')
+            log_time = item.get('log_time')
+            description = item.get('description')
+            duplex_status = item.get('duplex_status')
+            speed = item.get('speed')
+            vlan = item.get('vlan')
+            status = item.get('state')  # Assuming 'state' in your data maps to 'status' in the table
+            switchport_mode = item.get('switchport_mode')
+            switch = item.get('switch')
+    
+            # Execute the insert statement
+            try:
+                cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport_mode, switch))
+            except mariadb.Error as e:
+                print(f"Error inserting record: {e}")
+                print(f"Problematic data: {item}")
+                conn.rollback() # Rollback the transaction if an error occurs
+            insert_count=+1
+        # Commit the changes
+        conn.commit()
+        print(f"{insert_count} records inserted successfully.")
 
+    except mariadb.Error as e:
+        print(f"Error connecting to MariaDB: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        # Close the connection
+        if conn:
+            conn.close()
 
 def orchestrator():
     """
@@ -316,8 +375,7 @@ def orchestrator():
     json_switch_filepath = path.join(base_dir, 'config', 'devices.json')
     
     #Reading the json file for devices and saving it to <json_switch_details>
-    read_type='device'
-    json_switch_details=read_json_configs(json_switch_filepath,read_type)
+    json_switch_details=read_json_configs(json_switch_filepath,'device')
 
     # Iterate list of Switches from the json
     for switch_detail in json_switch_details: # type: ignore
@@ -327,15 +385,14 @@ def orchestrator():
         privi_regular_ints_results=get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
         # Get Mac Address Table
         mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-
-
         # Get uplink interfaces info
         uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
         # Get Privileged uplink info
         privi_uplink_ints_results=get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+
         # Get Mac Address Table uplink interface
         uplink_mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-
+        print()
 
 
         for uplink in uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list
@@ -353,7 +410,31 @@ def orchestrator():
             print("The result of the interfaces info lookup and privileged interfaces info did not match, quitting.")
             exit
         else:
+            processed_info=[]
             for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
-                print(regex_processor(interface_run, privileged_interface_run, mac_interface_address, switch_detail["host"]))
+                processed_info.append(regex_processor(interface_run, privileged_interface_run, mac_interface_address, switch_detail["host"]))
 
+    json_database_details=read_json_configs(json_switch_filepath,'database')
+    print(json_database_details[0])
+    mariadb_import(json_database_details[0], processed_info)
 orchestrator()
+
+
+
+"""
+interface_name       interface_name   -
+last_input           last_input       -
+last_output          last_output      -
+log_time             log_time         -
+description          description      -
+duplex_status        duplex_status
+Auto-speed           speed
+state                status
+mac                  mac  
+switchport_mode      switchport
+vlan                 vlan
+switch               switch
+
+
+
+"""
