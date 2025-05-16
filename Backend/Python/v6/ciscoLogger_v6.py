@@ -72,7 +72,7 @@ def get_interface_info(device_details,interface_type,interface_number):
 
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred during connection or command execution during connection for {device_details['host']}: {e}")
         if 'net_connect' in locals():
             net_connect.disconnect()
 
@@ -134,7 +134,7 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
         net_connect.disconnect()
 
     except Exception as e:
-        print(f"An error occurred during connection or command execution for {device_details['host']}: {e}")
+        print(f"An error occurred during connection or command execution during privileged connection for {device_details['host']}: {e}")
         # Only attempt to disconnect if net_connect object was successfully created
         if net_connect:
             try:
@@ -146,7 +146,75 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
 
     return interface_output_list
 
-def regex_processor(interface_text, privileged_interface_text, host):
+def get_interface_mac_address(device_details, interface_type, interface_number):
+    """
+    Inputs:
+        <device_details> Dictionary with the connection details
+        <interface_type> Type of interface (either gigabitethernet or fasterthernet)
+        <interface_number> (number range ex 1-48 1-2)
+    Return:
+        List with the output of the command of each interface as one item
+    """
+    if not device_details:
+        return []
+
+    # Dict to make the connection info
+    conn_info = {
+        "host": device_details['host'],
+        "username": device_details['username'],
+        "password": device_details['password'],
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+        "global_delay_factor": 2
+    }
+
+    # Add enable password directly to conn_info for robustness with Netmiko's enable()
+    if 'enable_password' in device_details:
+        conn_info['secret'] = device_details['enable_password']
+
+    net_connect = None # Initialize to None for error handling
+
+    try:
+        net_connect = ConnectHandler(**conn_info)
+
+        # Explicitly enter enable mode if an enable password was provided
+        if 'enable_password' in device_details:
+            net_connect.enable()
+
+        print(f"Retrieving interface arp MAC {device_details['host']} for {interface_type}{interface_number}")
+
+        # Transform the range (ex 1-48) to something usable ( range(1-49) )
+        start, end = map(int, interface_number.split("-"))
+        interface_range = range(start, end + 1)
+
+        # Command list
+        interfaces_to_query = []
+        for interface in interface_range:
+            interfaces_to_query.append(f"{interface_type}{interface}")
+
+        # Connection and retrieval of each interface
+        mac_output_list = []
+        for interface in interfaces_to_query:
+            command = f"show mac-address-table interface {interface}"
+            interface_output = net_connect.send_command(command)
+            mac_output_list.append(interface_output.strip()) # .strip() to clean whitespace
+        net_connect.disconnect()
+
+    except Exception as e:
+        print(f"An error occurred during connection or command execution during retrieval of MAC connection for {device_details['host']}: {e}")
+        # Only attempt to disconnect if net_connect object was successfully created
+        if net_connect:
+            try:
+                net_connect.disconnect()
+                print(f"Attempted to disconnect from {device_details['host']} after error.")
+            except Exception as disconnect_e:
+                print(f"Error during disconnect from {device_details['host']}: {disconnect_e}")
+        mac_output_list = [f"Error on {device_details['host']}: {e}"]
+
+    return mac_output_list
+
+
+def regex_processor(interface_text, privileged_interface_text, mac_interface_address, host):
     """
     Inputs:
         <switch_data> reciebes the switch data of each interface
@@ -196,9 +264,25 @@ def regex_processor(interface_text, privileged_interface_text, host):
     else:
         interface_info['state'] = "NULL"
 
-    #MAC interface of the connected device, set to NULL as no collection has been made yet
-    interface_info['mac'] = "NULL"
-    
+    mac_matches = re.findall(r'\b[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\b', mac_interface_address)
+    unformatted_mac = mac_matches if mac_matches else []
+
+    if len(unformatted_mac) == 1:
+        raw = unformatted_mac[0].replace('.', '').upper()
+        formatted_mac = ':'.join(raw[i:i+2] for i in range(0, 12, 2))
+        interface_info['mac'] = formatted_mac
+    elif len(unformatted_mac) > 1:
+        formatted_mac = []
+        for mac in unformatted_mac:
+            raw = mac.replace('.', '').upper()
+            formatted_mac.append(':'.join(raw[i:i+2] for i in range(0, 12, 2)))
+        interface_info['mac'] = formatted_mac
+    else:
+        interface_info['mac'] = None
+
+
+
+
     # Switchport mode of the interface
     switchport_mode_match = re.search(r'switchport\s+mode\s+(access|trunk|dynamic\s+(auto|desirable))', privileged_interface_text, re.IGNORECASE)
     if switchport_mode_match:
@@ -241,25 +325,35 @@ def orchestrator():
         regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
         # Get Privileged interface info
         privi_regular_ints_results=get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+        # Get Mac Address Table
+        mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+
 
         # Get uplink interfaces info
         uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
         # Get Privileged uplink info
         privi_uplink_ints_results=get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+        # Get Mac Address Table uplink interface
+        uplink_mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
 
-        for i in uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list
-            regular_ints_results.append(i)
+
+
+        for uplink in uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list
+            regular_ints_results.append(uplink)
 
             
-        for i in privi_uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
-            privi_regular_ints_results.append(i)
+        for privileged_uplink in privi_uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
+            privi_regular_ints_results.append(privileged_uplink)
+
+        for mac_address in uplink_mac_address_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
+            mac_address_ints_results.append(mac_address)
 
 
-        if len(regular_ints_results) != len(privi_regular_ints_results):
+        if len(regular_ints_results) != len(privi_regular_ints_results) and len(regular_ints_results) != len(mac_address_ints_results):
             print("The result of the interfaces info lookup and privileged interfaces info did not match, quitting.")
             exit
         else:
-            for interface_run, privileged_interface_run in zip(regular_ints_results, privi_regular_ints_results):
-                print(regex_processor(interface_run, privileged_interface_run, switch_detail["host"]))
+            for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
+                print(regex_processor(interface_run, privileged_interface_run, mac_interface_address, switch_detail["host"]))
 
 orchestrator()
