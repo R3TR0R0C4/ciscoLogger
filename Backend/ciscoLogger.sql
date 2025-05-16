@@ -14,7 +14,4 @@ CREATE TABLE ciscoLogger.interface_stats (
     status VARCHAR(50),
     switchport varchar(255),
     switch VARCHAR(255)
-    INDEX (interface_name, log_time),
-    INDEX (status, log_time),
-    INDEX (vlan)
 );
