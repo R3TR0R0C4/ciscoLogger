@@ -1,114 +1,32 @@
 {
   "device":[
     {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
+      "host": "IP_add",
+      "username": "cisco",
+      "password": "password",
+      "enable_password": "en_password",
       "interface_names": "GigabitEthernet1/0/",
-      "interface_number": "48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_number": "2"
+      "interface_number": "1-48",
+      "uplink_names": "GigabitEthernet1/0/",
+      "uplink_number": "49-52"
     },
     {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
+      "host": "IP_add",
+      "username": "cisco",
+      "password": "password",
+      "enable_password": "en_password",
+      "interface_names": "GigabitEthernet1/0/",
+      "interface_number": "1-48",
+      "uplink_names": "GigabitEthernet1/0/",
+      "uplink_number": "49-52"
+    }
+  ],
+  "database":[
     {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
-    },
-    {
-      "host": "switch_ip",
-      "username": "switch_user",
-      "password": "switch_password",
-      "enable_password": "switch_enable_password",
-      "interface_names": "GigabitEthernet",
-      "interface_range": "1-48",
-      "uplink_names": "GigabitEthernet",
-      "uplink_range": "1-2"
+    "host": "localhost",
+    "username": "user",
+    "password": "pass",
+    "database": "ciscoLogger"
     }
   ]
 }
