@@ -15,3 +15,13 @@ CREATE TABLE ciscoLogger.interface_stats (
     switchport varchar(255),
     switch VARCHAR(255)
 );
+
+
+CREATE TABLE ciscoLogger.network_devices (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ip_address VARCHAR(255) UNIQUE NOT NULL,
+    hostname VARCHAR(255) NOT NULL,
+    location VARCHAR(255) DEFAULT NULL,
+    model VARCHAR(255) DEFAULT NULL
+);
+
