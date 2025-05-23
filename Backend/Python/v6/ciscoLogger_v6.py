@@ -305,7 +305,7 @@ def regex_processor(interface_text, privileged_interface_text, mac_interface_add
     
     return interface_info
 
-def mariadb_import(json_database_details, interface_data):
+def mariadb_import1(json_database_details, interface_data):
     """
     Inputs:
         db_host, db_user, db_password, db_name: Information of the database connection
@@ -365,6 +365,60 @@ def mariadb_import(json_database_details, interface_data):
         if conn:
             conn.close()
 
+def mariadb_import(json_database_details, interface_data): # interface_data is now a single dictionary
+    conn = None
+    try:
+        conn = mariadb.connect(
+            host=json_database_details['host'],
+            user=json_database_details['username'],
+            password=json_database_details['password'],
+            database=json_database_details['database']
+        )
+        cursor = conn.cursor()
+    
+        # The SQL INSERT statement
+        insert_query = """
+        INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport, switch)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        insert_count=0
+        
+        # Directly use interface_data since it's already a dictionary
+        interface_name = interface_data.get('interface_name')
+        last_input = interface_data.get('last_input')
+        last_output = interface_data.get('last_output')
+        log_time = interface_data.get('log_time')
+        description = interface_data.get('description')
+        duplex_status = interface_data.get('duplex_status')
+        speed = interface_data.get('speed')
+        vlan = interface_data.get('vlan')
+        mac = interface_data.get('mac')
+        status = interface_data.get('state')  # Assuming 'state' in your data maps to 'status' in the table
+        switchport_mode = interface_data.get('switchport_mode')
+        switch = interface_data.get('switch')
+    
+        # Execute the insert statement
+        try:
+            cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport_mode, switch))
+            insert_count = 1 # Only one record is processed per call
+        except mariadb.Error as e:
+            print(f"Error inserting record: {e}")
+            print(f"Problematic data: {interface_data}") # Use interface_data directly
+            conn.rollback() # Rollback the transaction if an error occurs
+
+        # Commit the changes
+        conn.commit()
+        print(f"{insert_count} records inserted successfully.")
+
+    except mariadb.Error as e:
+        print(f"Error connecting to MariaDB: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        # Close the connection
+        if conn:
+            conn.close()
+
 def orchestrator():
     """
     Orchestrates all other functions
@@ -411,12 +465,15 @@ def orchestrator():
             exit
         else:
             processed_info=[]
+            json_database_details=read_json_configs(json_switch_filepath,'database')
+            json_database_details=json_database_details[0]
             for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
                 processed_info.append(regex_processor(interface_run, privileged_interface_run, mac_interface_address, switch_detail["host"]))
 
-    json_database_details=read_json_configs(json_switch_filepath,'database')
-    print(json_database_details[0])
-    mariadb_import(json_database_details[0], processed_info)
+        print(json_database_details)
+        #print(processed_info)
+        for i in processed_info:
+            mariadb_import(json_database_details,i)
 orchestrator()
 
 
