@@ -3,3 +3,4 @@ Python/config/device.json
 **/devices.json
 **/database.json
 .vscode
+Backend/SQL/inserts.sql
