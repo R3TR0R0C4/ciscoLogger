@@ -1,16 +1,16 @@
 import json
 import netmiko
 import mariadb
-from netmiko import ConnectHandler 
+from netmiko import ConnectHandler
 from os import path
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
+from concurrent.futures import ThreadPoolExecutor, as_completed # Import for multithreading
 
 def read_json_configs(filepath, read_type):
     """
-    Inputs: 
+    Inputs:
         <filepath> Takes a filepath of a .json
         <read_type> What is the json attribute to read (device or database)
     Return:
@@ -30,7 +30,7 @@ def read_json_configs(filepath, read_type):
 def get_interface_info(device_details,interface_type,interface_number):
     """
     Inputs:
-        <device_details> Dictionary with the connection details 
+        <device_details> Dictionary with the connection details
         <interface_type> Type of interface (either gigabitethernet or fasterthernet)
         <interface_number> (number range ex 1-48 1-2)
     Return:
@@ -38,9 +38,9 @@ def get_interface_info(device_details,interface_type,interface_number):
     """
     if not device_details:
         return []
-    
+
     #Dict to make the connection info
-    conn_info = { 
+    conn_info = {
         "host": device_details['host'],
         "username": device_details['username'],
         "password": device_details['password'],
@@ -78,6 +78,7 @@ def get_interface_info(device_details,interface_type,interface_number):
             net_connect.disconnect()
 
     return interface_output_list
+
 
 
 def get_interface_info_privileged(device_details, interface_type, interface_number):
@@ -140,12 +141,12 @@ def get_interface_info_privileged(device_details, interface_type, interface_numb
         if net_connect:
             try:
                 net_connect.disconnect()
-                print(f"Attempted to disconnect from {device_details['host']} after error.")
             except Exception as disconnect_e:
                 print(f"Error during disconnect from {device_details['host']}: {disconnect_e}")
         interface_output_list = [f"Error on {device_details['host']}: {e}"]
 
     return interface_output_list
+
 
 def get_interface_mac_address(device_details, interface_type, interface_number):
     """
@@ -195,10 +196,21 @@ def get_interface_mac_address(device_details, interface_type, interface_number):
 
         # Connection and retrieval of each interface
         mac_output_list = []
-        for interface in interfaces_to_query:
-            command = f"show mac-address-table interface {interface}"
-            interface_output = net_connect.send_command(command)
-            mac_output_list.append(interface_output.strip()) # .strip() to clean whitespace
+
+        # This complex condition should be checked carefully.
+        # It currently means (host is 192.168.180.240) OR (host is 192.168.180.242) OR (host is 192.168.180.243)
+        # The '=="192.168.180.240" ==' part seems like a typo.
+        # Assuming you want to check if the host is one of those specific IPs:
+        if device_details['host'] in ["192.168.180.240", "192.168.180.242", "192.168.180.243"]:
+            for interface in interfaces_to_query:
+                command = f"show mac-address-table interface {interface}"
+                interface_output = net_connect.send_command(command)
+                mac_output_list.append(interface_output.strip()) # .strip() to clean whitespace
+        else:
+            for interface in interfaces_to_query:
+                command = f"show mac address-table interface {interface}"
+                interface_output = net_connect.send_command(command)
+                mac_output_list.append(interface_output.strip()) # .strip() to clean whitespace
         net_connect.disconnect()
 
     except Exception as e:
@@ -207,7 +219,6 @@ def get_interface_mac_address(device_details, interface_type, interface_number):
         if net_connect:
             try:
                 net_connect.disconnect()
-                print(f"Attempted to disconnect from {device_details['host']} after error.")
             except Exception as disconnect_e:
                 print(f"Error during disconnect from {device_details['host']}: {disconnect_e}")
         mac_output_list = [f"Error on {device_details['host']}: {e}"]
@@ -234,7 +245,7 @@ def regex_processor(interface_text, privileged_interface_text, mac_interface_add
     last_output_match = re.search(r'output (never|\d{2}:\d{2}:\d{2})', interface_text)
     interface_info['last_output'] = last_output_match.group(1) if last_output_match else "NULL"
 
-    # Log time 
+    # Log time
     interface_info['log_time'] = datetime.now(ZoneInfo("Europe/Madrid")).strftime("%Y-%m-%d %H:%M:%S")
 
     # Description of the port
@@ -282,8 +293,6 @@ def regex_processor(interface_text, privileged_interface_text, mac_interface_add
         interface_info['mac'] = None
 
 
-
-
     # Switchport mode of the interface
     switchport_mode_match = re.search(r'switchport\s+mode\s+(access|trunk|dynamic\s+(auto|desirable))', privileged_interface_text, re.IGNORECASE)
     if switchport_mode_match:
@@ -298,21 +307,16 @@ def regex_processor(interface_text, privileged_interface_text, mac_interface_add
         else:
             interface_info['vlan'] = "N/A"
     else: # exception if there is no switchport configurations
-        interface_info['switchport_mode'] = None 
+        interface_info['switchport_mode'] = None
         interface_info['vlan'] = None
-    
+
     interface_info['switch'] = host
-    
+
     return interface_info
 
-def mariadb_import1(json_database_details, interface_data):
+def mariadb_delete_old_entries(json_database_details, switch_ip):
     """
-    Inputs:
-        db_host, db_user, db_password, db_name: Information of the database connection
-        interface_data: list of dictionaries containing each of the interface's status
-    Returs:
-        Inserts to a mariadb database
-        prints of the results        
+    Deletes existing entries for a given switch IP from the interface_stats table.
     """
     conn = None
     try:
@@ -323,50 +327,32 @@ def mariadb_import1(json_database_details, interface_data):
             database=json_database_details['database']
         )
         cursor = conn.cursor()
-    
-        # The SQL INSERT statement
-        insert_query = """
-        INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport, switch)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        insert_count=0
-        for item in interface_data:
-            # Map the dictionary keys to the table columns
-            interface_name = item.get('interface_name')
-            last_input = item.get('last_input')
-            last_output = item.get('last_output')
-            log_time = item.get('log_time')
-            description = item.get('description')
-            duplex_status = item.get('duplex_status')
-            speed = item.get('speed')
-            vlan = item.get('vlan')
-            status = item.get('state')  # Assuming 'state' in your data maps to 'status' in the table
-            switchport_mode = item.get('switchport_mode')
-            switch = item.get('switch')
-    
-            # Execute the insert statement
-            try:
-                cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, status, switchport_mode, switch))
-            except mariadb.Error as e:
-                print(f"Error inserting record: {e}")
-                print(f"Problematic data: {item}")
-                conn.rollback() # Rollback the transaction if an error occurs
-            insert_count=+1
-        # Commit the changes
+
+        delete_query = "DELETE FROM interface_stats WHERE switch = ?"
+        cursor.execute(delete_query, (switch_ip,))
+        deleted_rows = cursor.rowcount
         conn.commit()
-        print(f"{insert_count} records inserted successfully.")
+        print(f"Deleted {deleted_rows} old entries for switch: {switch_ip}")
 
     except mariadb.Error as e:
-        print(f"Error connecting to MariaDB: {e}")
+        print(f"Error deleting old entries from MariaDB for {switch_ip}: {e}")
+        if conn:
+            conn.rollback()
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"An unexpected error occurred during deletion: {e}")
     finally:
-        # Close the connection
         if conn:
             conn.close()
 
-def mariadb_import(json_database_details, interface_data): # interface_data is now a single dictionary
+def mariadb_import(json_database_details, all_interface_data):
+    """
+    Inputs:
+        <json_database_details> Dictionary with the database connection details
+        <all_interface_data> A list of dictionaries, where each dictionary contains
+                             the processed information for a single interface.
+    """
     conn = None
+    total_inserted_count = 0
     try:
         conn = mariadb.connect(
             host=json_database_details['host'],
@@ -375,123 +361,153 @@ def mariadb_import(json_database_details, interface_data): # interface_data is n
             database=json_database_details['database']
         )
         cursor = conn.cursor()
-    
-        # The SQL INSERT statement
+
         insert_query = """
         INSERT INTO interface_stats (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport, switch)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        insert_count=0
-        
-        # Directly use interface_data since it's already a dictionary
-        interface_name = interface_data.get('interface_name')
-        last_input = interface_data.get('last_input')
-        last_output = interface_data.get('last_output')
-        log_time = interface_data.get('log_time')
-        description = interface_data.get('description')
-        duplex_status = interface_data.get('duplex_status')
-        speed = interface_data.get('speed')
-        vlan = interface_data.get('vlan')
-        mac = interface_data.get('mac')
-        status = interface_data.get('state')  # Assuming 'state' in your data maps to 'status' in the table
-        switchport_mode = interface_data.get('switchport_mode')
-        switch = interface_data.get('switch')
-    
-        # Execute the insert statement
-        try:
-            cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport_mode, switch))
-            insert_count = 1 # Only one record is processed per call
-        except mariadb.Error as e:
-            print(f"Error inserting record: {e}")
-            print(f"Problematic data: {interface_data}") # Use interface_data directly
-            conn.rollback() # Rollback the transaction if an error occurs
 
-        # Commit the changes
+        for interface_data in all_interface_data: # Iterate through the list of interface dictionaries
+            interface_name = interface_data.get('interface_name')
+            last_input = interface_data.get('last_input')
+            last_output = interface_data.get('last_output')
+            log_time = interface_data.get('log_time')
+            description = interface_data.get('description')
+            duplex_status = interface_data.get('duplex_status')
+            speed = interface_data.get('speed')
+            vlan = interface_data.get('vlan')
+            mac = interface_data.get('mac')
+            status = interface_data.get('state')
+            switchport_mode = interface_data.get('switchport_mode')
+            switch = interface_data.get('switch')
+
+            # Handle MAC address formatting for database insertion
+            if isinstance(mac, list):
+                # Join multiple MACs into a string, or handle as per your DB schema
+                mac = ", ".join(mac)
+            if mac and len(mac) > 255:  # Assuming your 'mac' column is VARCHAR(255)
+                mac = "MACs too long or multiple MACs. Truncated or refer to raw data." # Or truncate: mac[:255]
+
+            try:
+                cursor.execute(insert_query, (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport_mode, switch))
+                total_inserted_count += 1
+            except mariadb.Error as e:
+                print(f"Error inserting record for {interface_name} on {switch}: {e}")
+                print(f"Problematic data: {interface_data}")
+                # Don't rollback immediately, let's try to insert other records and commit at the end.
+                # If you need transactional integrity for ALL inserts, you'd want to rollback outside the loop.
+                # For now, we'll just print the error and continue.
+
         conn.commit()
-        print(f"{insert_count} records inserted successfully.")
+        print(f"Successfully inserted {total_inserted_count} entries for switch: {all_interface_data[0]['switch'] if all_interface_data else 'Unknown'}.")
 
     except mariadb.Error as e:
         print(f"Error connecting to MariaDB: {e}")
+        if conn:
+            conn.rollback() # Rollback if connection or initial setup fails
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
     finally:
-        # Close the connection
         if conn:
             conn.close()
 
+
+def fetch_and_process_switch_data(switch_detail, json_database_details):
+    """
+    This function will be run in a separate thread for each switch.
+    It encapsulates the entire process for one switch: fetch, process, and insert.
+    """
+    host = switch_detail['host']
+    print(f"Starting data collection for switch: {host}")
+
+    try:
+        # Delete old entries for the current switch before inserting new ones
+        mariadb_delete_old_entries(json_database_details, host)
+
+        # Get regular interface info
+        regular_ints_results = get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+        # Get Privileged interface info
+        privi_regular_ints_results = get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+        # Get Mac Address Table
+        mac_address_ints_results = get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
+        # Get uplink interfaces info
+        uplink_ints_results = get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+        # Get Privileged uplink info
+        privi_uplink_ints_results = get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+        # Get Mac Address Table uplink interface
+        uplink_mac_address_ints_results = get_interface_mac_address(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"]) # Corrected this line to use uplink_names and uplink_number for mac address
+        print(f"Finished fetching raw data for {host}")
+
+        # Consolidate results for processing
+        regular_ints_results.extend(uplink_ints_results)
+        privi_regular_ints_results.extend(privi_uplink_ints_results)
+        mac_address_ints_results.extend(uplink_mac_address_ints_results)
+
+
+        if len(regular_ints_results) != len(privi_regular_ints_results) or len(regular_ints_results) != len(mac_address_ints_results):
+            print(f"WARNING: Data length mismatch for {host}. Skipping processing and insertion for this switch.")
+            return # Exit this thread's execution for this switch
+
+        processed_info = []
+        for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
+            processed_info.append(regex_processor(interface_run, privileged_interface_run, mac_interface_address, host))
+
+        # Insert processed data into the database
+        mariadb_import(json_database_details, processed_info)
+        return f"Successfully processed and inserted data for {host}"
+
+    except Exception as e:
+        print(f"An error occurred during processing for switch {host}: {e}")
+        return f"Error processing switch {host}: {e}"
+
+
 def orchestrator():
     """
-    Orchestrates all other functions
+    Orchestrates all other functions using multithreading for switch data collection.
     """
-
-    # build of the pwd to open the directory config without problems
-    base_dir = path.dirname(path.abspath(__file__)) 
+    base_dir = path.dirname(path.abspath(__file__))
     json_switch_filepath = path.join(base_dir, 'config', 'devices.json')
-    
-    #Reading the json file for devices and saving it to <json_switch_details>
-    json_switch_details=read_json_configs(json_switch_filepath,'device')
 
-    # Iterate list of Switches from the json
-    for switch_detail in json_switch_details: # type: ignore
-        # Get regular interface info
-        regular_ints_results=get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get Privileged interface info
-        privi_regular_ints_results=get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get Mac Address Table
-        mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get uplink interfaces info
-        uplink_ints_results=get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"] )
-        # Get Privileged uplink info
-        privi_uplink_ints_results=get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
+    json_switch_details = read_json_configs(json_switch_filepath, 'device')
+    if not json_switch_details:
+        print("Error: Device configuration not found or invalid.")
+        return
 
-        # Get Mac Address Table uplink interface
-        uplink_mac_address_ints_results=get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        print()
+    json_database_details = read_json_configs(json_switch_filepath, 'database')
+    if not json_database_details:
+        print("Error: Database configuration not found or invalid.")
+        return
+    json_database_details = json_database_details[0]
+
+    # Max workers can be set to the number of switches for full concurrency,
+    # or a smaller number if you want to limit concurrent connections.
+    # 11 switches, so max_workers=11 is fine.
+    MAX_WORKERS = 11 if len(json_switch_details) > 11 else len(json_switch_details)
 
 
-        for uplink in uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list
-            regular_ints_results.append(uplink)
+    results = []
+    # Use ThreadPoolExecutor to run data collection for each switch concurrently
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        # Submit tasks for each switch
+        future_to_switch = {
+            executor.submit(fetch_and_process_switch_data, switch_detail, json_database_details): switch_detail['host']
+            for switch_detail in json_switch_details
+        }
 
-            
-        for privileged_uplink in privi_uplink_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
-            privi_regular_ints_results.append(privileged_uplink)
+        # Process results as they complete
+        for future in as_completed(future_to_switch):
+            switch_host = future_to_switch[future]
+            try:
+                result = future.result()
+                results.append(result)
+                print(f"Result for {switch_host}: {result}")
+            except Exception as exc:
+                print(f"{switch_host} generated an exception: {exc}")
+                results.append(f"Error for {switch_host}: {exc}")
 
-        for mac_address in uplink_mac_address_ints_results: # Append of all the uplink interfaces to the previous list to keep it all in one list This is for privileged info
-            mac_address_ints_results.append(mac_address)
+    print("\n--- All switch data collection tasks completed ---")
+    for res in results:
+        print(res)
 
-
-        if len(regular_ints_results) != len(privi_regular_ints_results) and len(regular_ints_results) != len(mac_address_ints_results):
-            print("The result of the interfaces info lookup and privileged interfaces info did not match, quitting.")
-            exit
-        else:
-            processed_info=[]
-            json_database_details=read_json_configs(json_switch_filepath,'database')
-            json_database_details=json_database_details[0]
-            for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
-                processed_info.append(regex_processor(interface_run, privileged_interface_run, mac_interface_address, switch_detail["host"]))
-
-        print(json_database_details)
-        #print(processed_info)
-        for i in processed_info:
-            mariadb_import(json_database_details,i)
+# Run the orchestrator
 orchestrator()
-
-
-
-"""
-interface_name       interface_name   -
-last_input           last_input       -
-last_output          last_output      -
-log_time             log_time         -
-description          description      -
-duplex_status        duplex_status
-Auto-speed           speed
-state                status
-mac                  mac  
-switchport_mode      switchport
-vlan                 vlan
-switch               switch
-
-
-
-"""
