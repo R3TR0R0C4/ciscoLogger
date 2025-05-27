@@ -1,0 +1,318 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+/* Contenedor para el título y el botón, para que estén en la misma línea */
+.header-container {
+    display: flex;
+    justify-content: flex-start; /* Alinea el h1 a la izquierda y el botón a la derecha */
+    align-items: center; /* Centra verticalmente ambos elementos */
+    margin-bottom: 20px; /* Espacio debajo del encabezado */
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+}
+
+h1 {
+    color: #333;
+    margin: 0; /* Elimina el margen por defecto del h1 para un mejor control con flexbox */
+    margin-right: 20px;
+}
+
+/* Estilos para el botón de búsqueda (general) */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #6c757d; /* Un verde para el botón de buscar */
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    white-space: nowrap; /* Evita que el texto del botón se rompa */
+}
+
+.button:hover {
+    background-color: #218838;
+}
+
+#tabs-container {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 20px;
+    overflow-x: auto; /* Allow horizontal scrolling for many tabs */
+    padding-bottom: 5px; /* Add some space below tabs */
+}
+.tab-button {
+    padding: 8px 15px; /* Adjust padding as needed */
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #e0e0e0;
+    margin-right: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    /* Flexbox to stack content vertically */
+    display: flex;
+    flex-direction: column; /* This is already set to stack vertically */
+    align-items: flex-start; /* ALIGN TO THE LEFT - CHANGE HERE */
+    /* If you want to center text, use align-items: center; */
+    justify-content: center;
+    line-height: 1.2;
+}
+
+.tab-button:hover {
+    background-color: #d0d0d0;
+}
+
+.tab-button.active {
+    background-color: #fff;
+    border-color: #ccc;
+    border-bottom: 1px solid #fff;
+    z-index: 1;
+    position: relative;
+    font-weight: bold;
+    color: #0056b3;
+}
+
+.tab-button span:first-child {
+    font-size: 1em; /* Default font size for the IP */
+    font-weight: bold; /* Make IP bold */
+    color: #333; /* Default IP color */
+}
+
+.tab-hostname {
+    font-size: 0.8em; /* Smaller font size for hostname */
+    color: #666; /* Slightly lighter gray for hostname */
+    font-weight: normal; /* Ensure hostname is not bold */
+    margin-top: 2px; /* Small space between IP and hostname */
+}
+
+/* When the tab is active, adjust colors for both lines */
+.tab-button.active span:first-child {
+    color: #0056b3; /* Active color for IP */
+}
+
+.tab-button.active .tab-hostname {
+    color: #0056b3; /* Active color for hostname, matching IP */
+    font-weight: normal;
+}
+
+.custom-tooltip {
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 10px 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: none; /* Hidden by default, shown by JS */
+    min-width: 200px; /* Ensure it's wide enough */
+    max-width: 300px;
+    font-size: 0.9em;
+    pointer-events: none; /* Ensures the tooltip doesn't interfere with mouse events on elements beneath it */
+    white-space: normal; /* Allow text to wrap if it's too long */
+    z-index: 9999; /* Higher than other elements to ensure visibility */
+}
+
+.custom-tooltip p {
+    margin: 0;
+    padding: 2px 0;
+}
+
+.custom-tooltip p:last-child {
+    padding-bottom: 0;
+}
+
+.custom-tooltip strong {
+    color: #ffd700; /* Gold-like color for labels */
+}
+
+#content-area {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 5px;
+    min-height: 300px;
+    overflow-x: auto; /* For wide tables */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+table, th, td {
+    border: 1px solid #ddd;
+}
+th, td {
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    color: #555;
+}
+
+/* Original zebra striping - will be overridden by status classes */
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Default row hover */
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Styles for "Not connected" status */
+/* Increased specificity by adding 'tbody' and using !important for background */
+tbody tr.status-not-connected {
+    color: #666; /* Deeper gray text */
+    background-color: #e0e0e0 !important; /* Deeper gray background, use !important to override zebra */
+    font-style: italic;
+}
+
+/* Hover for "Not connected" to ensure it remains grayed */
+tbody tr.status-not-connected:hover {
+    background-color: #d0d0d0 !important; /* Even deeper gray on hover */
+}
+
+
+/* Styles for "shutdown" status */
+/* Increased specificity by adding 'tbody' and using !important for background */
+tbody tr.status-shutdown {
+    background-color: #ffd966 !important; /* Slightly deeper orange background */
+    color: #b35900; /* Darker orange text for contrast */
+    font-weight: bold;
+}
+
+/* Hover for "shutdown" to ensure it remains orange */
+tbody tr.status-shutdown:hover {
+    background-color: #ffcc33 !important; /* Even deeper orange on hover */
+}
+
+.error-message {
+    color: red;
+    font-weight: bold;
+}
+.loading-message {
+    color: #007bff;
+    font-style: italic;
+}
+
+/* --- Nuevos estilos para mac_search.php --- */
+
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333; /* Color de texto como el h1 */
+}
+.form-group input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Asegura que el padding no aumente el ancho total */
+    font-size: 1em; /* Ajusta el tamaño de la fuente al resto de la página */
+}
+.form-group button {
+    background-color: #007bff; /* Color azul, similar al de las pestañas activas */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+.form-group button:hover {
+    background-color: #0056b3; /* Azul más oscuro al pasar el ratón */
+}
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9em; /* Mismo tamaño de fuente que las tablas existentes */
+}
+.results-table th, .results-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+.results-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    color: #555;
+}
+/* Estilo para las filas pares de la tabla de resultados, para que coincida */
+.results-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.results-table tr:hover {
+    background-color: #f1f1f1;
+}
+
+.back-button {
+    display: inline-block;
+    margin-top: 20px;
+    background-color: #6c757d; /* Color gris para el botón de volver */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+.back-button:hover {
+    background-color: #5a6268;
+}
+/* Reutilizamos los estilos de mensajes de error y no resultados existentes */
+.error-message { /* Ya existe, pero se asegura que se aplique */
+    color: #dc3545;
+    font-weight: bold;
+    margin-top: 15px;
+}
+.no-results-message { /* Nuevo, para cuando no se encuentra la MAC */
+    color: #dc3545;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+/* Estilos para el botón de búsqueda */
+.top-controls {
+    margin-bottom: 20px;
+    text-align: center; /* O ajusta a la izquierda si prefieres */
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #28a745; /* Un verde para el botón de buscar */
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.button:hover {
+    background-color: #218838;
+}

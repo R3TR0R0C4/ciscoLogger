@@ -1,0 +1,21 @@
+# Deny direct access to all files in this directory by default
+Order Deny,Allow
+Deny from all
+
+# Allow access to PHP files (e.g., index.php, download.php)
+# This rule overrides the 'Deny from all' for files ending in .php
+<FilesMatch "\.php$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Optional: If you have specific static files (like images, CSS, JS)
+# that should be publicly accessible within this folder (e.g., for styling)
+ <FilesMatch "\.(png||css|js)$">
+     Order Allow,Deny
+     Allow from all
+ </FilesMatch>
+
+# Remember that for any static files you want to serve securely (only to logged-in users),
+# you should continue to use the PHP file serving script (like download.php)
+# and keep them denied by the general 'Deny from all' rule.
