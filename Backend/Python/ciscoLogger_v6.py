@@ -6,7 +6,7 @@ from os import path
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from concurrent.futures import ThreadPoolExecutor, as_completed # Import for multithreading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def read_json_configs(filepath, read_type):
     """
@@ -14,7 +14,7 @@ def read_json_configs(filepath, read_type):
         <filepath> Takes a filepath of a .json
         <read_type> What is the json attribute to read (device or database)
     Return:
-        output_config: The configuration used to connect to switches and their information
+        output_config: The configuration used to connect to switches or the database
     """
     try:
         with open(filepath, 'r') as f:
@@ -197,10 +197,7 @@ def get_interface_mac_address(device_details, interface_type, interface_number):
         # Connection and retrieval of each interface
         mac_output_list = []
 
-        # This complex condition should be checked carefully.
-        # It currently means (host is 192.168.180.240) OR (host is 192.168.180.242) OR (host is 192.168.180.243)
-        # The '=="192.168.180.240" ==' part seems like a typo.
-        # Assuming you want to check if the host is one of those specific IPs:
+        # Check what the IP is, if it's one of the older switches it's a different command
         if device_details['host'] in ["192.168.180.240", "192.168.180.242", "192.168.180.243"]:
             for interface in interfaces_to_query:
                 command = f"show mac-address-table interface {interface}"
@@ -394,9 +391,7 @@ def mariadb_import(json_database_details, all_interface_data):
             except mariadb.Error as e:
                 print(f"Error inserting record for {interface_name} on {switch}: {e}")
                 print(f"Problematic data: {interface_data}")
-                # Don't rollback immediately, let's try to insert other records and commit at the end.
-                # If you need transactional integrity for ALL inserts, you'd want to rollback outside the loop.
-                # For now, we'll just print the error and continue.
+
 
         conn.commit()
         print(f"Successfully inserted {total_inserted_count} entries for switch: {all_interface_data[0]['switch'] if all_interface_data else 'Unknown'}.")
@@ -410,6 +405,52 @@ def mariadb_import(json_database_details, all_interface_data):
     finally:
         if conn:
             conn.close()
+
+
+def get_cdp_neighbors_and_update_mac(device_details, processed_info):
+    """
+    Retrieves CDP neighbor information and updates the MAC field in processed_info
+    with the neighboring switch's hostname and interface if applicable.
+    """
+    conn_info = {
+        "host": device_details['host'],
+        "username": device_details['username'],
+        "password": device_details['password'],
+        "device_type": "cisco_ios_telnet",
+        "port": 23,
+    }
+
+    try:
+        net_connect = ConnectHandler(**conn_info)
+        print(f"Retrieving CDP neighbor information from {device_details['host']}")
+
+        # Execute the command to get CDP neighbor details
+        cdp_output = net_connect.send_command("show cdp neighbor detail")
+        net_connect.disconnect()
+
+        # Parse the CDP output
+        cdp_neighbors = {}
+        neighbor_blocks = cdp_output.split("Device ID:")
+        for block in neighbor_blocks[1:]:
+            lines = block.strip().splitlines()
+            neighbor_name = lines[0].strip()
+            local_interface_match = re.search(r"Interface: (\S+),", block)
+            remote_interface_match = re.search(r"Port ID \(outgoing port\): (\S+)", block)
+            if local_interface_match and remote_interface_match:
+                local_interface = local_interface_match.group(1).lower()
+                remote_interface = remote_interface_match.group(1)
+                cdp_neighbors[local_interface] = f"{neighbor_name} ({remote_interface})"
+
+        # Update the MAC field in processed_info
+        for interface_data in processed_info:
+            interface_name = interface_data.get('interface_name', '').lower()
+            if interface_name in cdp_neighbors:
+                interface_data['mac'] = cdp_neighbors[interface_name]
+
+    except Exception as e:
+        print(f"An error occurred while retrieving CDP neighbors for {device_details['host']}: {e}")
+
+    return processed_info
 
 
 def fetch_and_process_switch_data(switch_detail, json_database_details):
@@ -443,14 +484,16 @@ def fetch_and_process_switch_data(switch_detail, json_database_details):
         privi_regular_ints_results.extend(privi_uplink_ints_results)
         mac_address_ints_results.extend(uplink_mac_address_ints_results)
 
-
         if len(regular_ints_results) != len(privi_regular_ints_results) or len(regular_ints_results) != len(mac_address_ints_results):
             print(f"WARNING: Data length mismatch for {host}. Skipping processing and insertion for this switch.")
-            return # Exit this thread's execution for this switch
+            return  # Exit this thread's execution for this switch
 
         processed_info = []
         for interface_run, privileged_interface_run, mac_interface_address in zip(regular_ints_results, privi_regular_ints_results, mac_address_ints_results):
             processed_info.append(regex_processor(interface_run, privileged_interface_run, mac_interface_address, host))
+
+        # Update processed_info with CDP neighbor data
+        processed_info = get_cdp_neighbors_and_update_mac(switch_detail, processed_info)
 
         # Insert processed data into the database
         mariadb_import(json_database_details, processed_info)
