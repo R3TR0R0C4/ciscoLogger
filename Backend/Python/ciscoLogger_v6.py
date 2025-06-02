@@ -341,6 +341,58 @@ def mariadb_delete_old_entries(json_database_details, switch_ip):
         if conn:
             conn.close()
 
+def mariadb_archive_old_entries(json_database_details, switch_ip):
+    """
+    Archives existing entries for a given switch IP from the interface_stats table
+    into the interface_stats_history table.
+    """
+    conn = None
+    try:
+        conn = mariadb.connect(
+                host=json_database_details['host'],
+            user=json_database_details['username'],
+            password=json_database_details['password'],
+            database=json_database_details['database']
+        )
+        cursor = conn.cursor()
+
+        # Copy existing data to the history table, truncating the 'mac' column if necessary
+        archive_query = """
+        INSERT INTO interface_stats_history (interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, mac, status, switchport, switch, archived_at)
+        SELECT interface_name, last_input, last_output, log_time, description, duplex_status, speed, vlan, 
+               CASE 
+                   WHEN CHAR_LENGTH(mac) > 255 THEN LEFT(mac, 255) 
+                   ELSE mac 
+               END AS mac,
+               status, switchport, switch, NOW()
+        FROM interface_stats
+        WHERE switch = ?
+        """
+        cursor.execute(archive_query, (switch_ip,))
+        archived_rows = cursor.rowcount
+        conn.commit()
+        print(f"Archived {archived_rows} entries for switch: {switch_ip}")
+
+    except mariadb.Error as e:
+        # Log detailed error information
+        print(f"Error archiving old entries from MariaDB for switch {switch_ip}: {e}")
+        if conn:
+            conn.rollback()
+        # Log the problematic query and parameters
+        with open("archive_errors.log", "a") as log_file:
+            log_file.write(f"[{datetime.now()}] Error archiving data for switch {switch_ip}: {e}\n")
+            log_file.write(f"Query: {archive_query}\n")
+            log_file.write(f"Parameters: switch_ip={switch_ip}\n\n")
+
+    except Exception as e:
+        # Log unexpected errors
+        print(f"An unexpected error occurred during archiving for switch {switch_ip}: {e}")
+        with open("archive_errors.log", "a") as log_file:
+            log_file.write(f"[{datetime.now()}] Unexpected error for switch {switch_ip}: {e}\n\n")
+
+    finally:
+        if conn:
+            conn.close()
 def mariadb_import(json_database_details, all_interface_data):
     """
     Inputs:
@@ -462,21 +514,19 @@ def fetch_and_process_switch_data(switch_detail, json_database_details):
     print(f"Starting data collection for switch: {host}")
 
     try:
+        # Archive old entries for the current switch before deleting them
+        mariadb_archive_old_entries(json_database_details, host)
+
         # Delete old entries for the current switch before inserting new ones
         mariadb_delete_old_entries(json_database_details, host)
 
-        # Get regular interface info
+        # Fetch and process data (existing logic)
         regular_ints_results = get_interface_info(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get Privileged interface info
         privi_regular_ints_results = get_interface_info_privileged(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get Mac Address Table
         mac_address_ints_results = get_interface_mac_address(switch_detail, switch_detail["interface_names"], switch_detail["interface_number"])
-        # Get uplink interfaces info
         uplink_ints_results = get_interface_info(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
-        # Get Privileged uplink info
         privi_uplink_ints_results = get_interface_info_privileged(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
-        # Get Mac Address Table uplink interface
-        uplink_mac_address_ints_results = get_interface_mac_address(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"]) # Corrected this line to use uplink_names and uplink_number for mac address
+        uplink_mac_address_ints_results = get_interface_mac_address(switch_detail, switch_detail["uplink_names"], switch_detail["uplink_number"])
         print(f"Finished fetching raw data for {host}")
 
         # Consolidate results for processing
