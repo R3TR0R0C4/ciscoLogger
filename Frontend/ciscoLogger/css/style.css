@@ -30,6 +30,20 @@ h1 {
     border-radius: 5px;
     font-weight: bold;
     transition: background-color 0.3s ease;
+    margin-left: 10px;
+    white-space: nowrap; /* Evita que el texto del botón se rompa */
+}
+
+.logout-button{
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #6c757d; /* Un verde para el botón de buscar */
+    color: white;
+    text-decoration: none;
+    margin-left: 20px; /* Empuja el botón a la derecha */
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
     white-space: nowrap; /* Evita que el texto del botón se rompa */
 }
 
@@ -42,7 +56,6 @@ h1 {
     border-bottom: 1px solid #ccc;
     margin-bottom: 20px;
     overflow-x: auto; /* Allow horizontal scrolling for many tabs */
-    padding-bottom: 5px; /* Add some space below tabs */
 }
 .tab-button {
     padding: 8px 15px; /* Adjust padding as needed */

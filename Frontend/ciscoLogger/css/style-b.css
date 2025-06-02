@@ -1,0 +1,262 @@
+/* Modo oscuro */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #121212; /* Fondo oscuro */
+    color: #e0e0e0; /* Texto claro */
+}
+
+/* Contenedor para el título y el botón */
+.header-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+h1 {
+    color: #ffffff; /* Texto blanco */
+    margin: 0;
+    margin-right: 20px;
+}
+
+/* Estilos para los botones */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #1f1f1f; /* Fondo oscuro */
+    color: #ffffff; /* Texto blanco */
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
+}
+
+.button:hover {
+    background-color: #333333; /* Fondo más claro al pasar el ratón */
+}
+
+.logout-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #1f1f1f;
+    color: #ffffff;
+    text-decoration: none;
+    margin-left: 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
+}
+
+.logout-button:hover {
+    background-color: #333333;
+}
+
+/* Contenedor de pestañas */
+#tabs-container {
+    display: flex;
+    border-bottom: 1px solid #444; /* Borde oscuro */
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.tab-button {
+    padding: 8px 15px;
+    cursor: pointer;
+    border: 1px solid #444; /* Borde oscuro */
+    border-bottom: none;
+    background-color: #1f1f1f; /* Fondo oscuro */
+    margin-right: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    line-height: 1.2;
+    color: #e0e0e0; /* Texto claro */
+}
+
+.tab-button:hover {
+    background-color: #333333;
+}
+
+.tab-button.active {
+    background-color: #333333;
+    border-color: #555; /* Borde más claro */
+    border-bottom: 1px solid #333333;
+    z-index: 1;
+    position: relative;
+    font-weight: bold;
+    color: #4caf50; /* Verde para pestañas activas */
+}
+
+.tab-button span:first-child {
+    font-size: 1em;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.tab-hostname {
+    font-size: 0.8em;
+    color: #aaaaaa; /* Gris claro */
+    font-weight: normal;
+    margin-top: 2px;
+}
+
+.tab-button.active span:first-child {
+    color: #4caf50; /* Verde para IP activa */
+}
+
+.tab-button.active .tab-hostname {
+    color: #4caf50;
+    font-weight: normal;
+}
+
+/* Tooltip personalizado */
+.custom-tooltip {
+    background-color: #333333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 10px 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    display: none;
+    min-width: 200px;
+    max-width: 300px;
+    font-size: 0.9em;
+    pointer-events: none;
+    white-space: normal;
+    z-index: 9999;
+}
+
+.custom-tooltip strong {
+    color: #ffeb3b; /* Amarillo para etiquetas */
+}
+
+/* Área de contenido */
+#content-area {
+    background-color: #1f1f1f;
+    border: 1px solid #444;
+    padding: 20px;
+    border-radius: 5px;
+    min-height: 300px;
+    overflow-x: auto;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9em;
+    background-color: #1f1f1f;
+    color: #e0e0e0;
+}
+
+table, th, td {
+    border: 1px solid #444;
+    padding: 12px 8px; /* Aumenta el espacio interno */
+    line-height: 1.6; /* Incrementa la altura de línea */
+}
+
+th {
+    background-color: #333333;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+tr:nth-child(even) {
+    background-color: #2a2a2a;
+}
+
+tr:hover {
+    background-color: #333333;
+}
+
+/* Estados */
+tbody tr.status-not-connected {
+    color: #aaaaaa;
+    background-color: #2a2a2a !important;
+    font-style: italic;
+}
+
+tbody tr.status-shutdown {
+    background-color: #ff9800 !important;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+tbody tr.status-shutdown:hover {
+    background-color: #e68900 !important;
+}
+
+/* Mensajes */
+.error-message {
+    color: #f44336; /* Rojo */
+    font-weight: bold;
+}
+
+.loading-message {
+    color: #4caf50; /* Verde */
+    font-style: italic;
+}
+
+/* Formularios */
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #1f1f1f;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.form-group label {
+    color: #e0e0e0;
+}
+
+.form-group input[type="text"] {
+    background-color: #333333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+}
+
+.form-group button {
+    background-color: #4caf50;
+    color: #ffffff;
+}
+
+.form-group button:hover {
+    background-color: #388e3c;
+}
+
+.results-table th {
+    background-color: #333333;
+    color: #ffffff;
+}
+
+.results-table tr:nth-child(even) {
+    background-color: #2a2a2a;
+}
+
+.results-table tr:hover {
+    background-color: #333333;
+}
+
+.back-button {
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+.back-button:hover {
+    background-color: #333333;
+}

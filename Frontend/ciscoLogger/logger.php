@@ -7,12 +7,78 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
 </head>
-<body>
-    <div class="header-container">
-      <h1>Cisco Switch Interface Logs</h1>
-      <a href="mac_search.php" class="button">MAC</a>
-    </div>
+<script>
+    function startScript() {
+        const statusEl = document.getElementById('script-status');
+        statusEl.textContent = '⏳ Running interface collection info...';
 
+        fetch('/ciscoLogger/run_script.php')
+            .then(() => {
+                const checkInterval = setInterval(() => {
+                    fetch('/ciscoLogger/check_status.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'done') {
+                                statusEl.textContent = '✅ Completed';
+                                clearInterval(checkInterval);
+                            } else if (data.status === 'error') {
+                                statusEl.textContent = '❌ Error: See log';
+                                console.error(data.message);
+                                clearInterval(checkInterval);
+                            }
+                        });
+                }, 1000);
+            })
+            .catch(err => {
+                statusEl.textContent = '❌ Failed to start script';
+                console.error(err);
+            });
+    }
+</script>
+<body>
+    <?php
+        session_start();
+
+        // Check if the 'username' session variable is NOT set
+        if (!isset($_SESSION['username'])) {
+            header("Location: /index.php");
+            exit();
+        }
+
+        // Database configuration
+        $db_host = 'localhost';
+        $db_user = 'logger';
+        $db_pass = 'logger';
+        $db_name = 'ciscoLogger';
+
+        $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+        if ($conn->connect_error) {
+            die("Connection failed: " . $conn->connect_error);
+        }
+
+        // Obtener la última actualización
+        $last_update = '';
+        $sql_last_update = "SELECT log_time FROM interface_stats ORDER BY log_time DESC LIMIT 1";
+        $result_last_update = $conn->query($sql_last_update);
+        if ($result_last_update && $row = $result_last_update->fetch_assoc()) {
+            $last_update = htmlspecialchars($row['log_time']);
+        }
+    ?>
+    <div class="header-container">
+      <h1 style="display:inline-block; margin-right:20px;">Cisco Switch Interface Logs</h1>
+        <?php
+        if ($last_update) {
+            echo '<span class="last-update" style="margin-right:20px;">Last update:<br>' . $last_update . '</span>';
+        } else {
+            echo '<span class="last-update" style="margin-right:20px;">Unknown last update.</span>';
+        }
+        ?>
+
+      <a href="mac_search.php" class="button">MAC</a>
+      <a href="port_history.php" class="button">Historics</a>
+      <a href="/logout.php" class="logout-button">Logout</a>
+    </div>
     <div id="tabs-container">
         <?php
 
@@ -21,15 +87,14 @@
         // Check if the 'username' session variable is NOT set
         if (!isset($_SESSION['username'])) {
             // If the user is not logged in, redirect them to the login page.
-            header("Location: /login.php"); // Adjust path as needed
+            header("Location: /index.php"); // Adjust path as needed
             exit(); // Important: Always exit after a header redirect
         }
 
-
         // Database configuration (replace with your actual credentials)
         $db_host = 'localhost';
-        $db_user = 'user';
-        $db_pass = 'password';
+        $db_user = 'logger';
+        $db_pass = 'logger';
         $db_name = 'ciscoLogger';
 
         $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
@@ -71,6 +136,16 @@
     <script src="js/jquery.min.js"></script>
     <script src="js/script.js"></script>
 </body>
+<!--
+    ____  ___________  ______ ____________
+   / __ \/ ____// __ \/ ____// ___// ____/\
+  / / / / __/ // / / /\__ \ / __/ / /\ ___\/
+ / /_/ / /___// /_/ /___/ // /___/ /_/__
+/_____/_____//_____//____//_____/\_____/\
+\ _____\\____\\\____\\____\\_____\_\____\/
+
+       -- Who else is listening? --
+-->
 </html>
 
 <?php

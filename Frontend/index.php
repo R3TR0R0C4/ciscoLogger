@@ -6,8 +6,8 @@ session_start();
 // For security, consider storing these outside the web root or using environment variables.
 define('DB_HOST', 'localhost');         // Your database host (e.g., 'localhost', '127.0.0.1')
 define('DB_NAME', 'ciscoLogger'); // Your database name
-define('DB_USER', 'user');   // Your database username
-define('DB_PASS', 'password');   // Your database password
+define('DB_USER', 'logger');   // Your database username
+define('DB_PASS', 'logger');   // Your database password
 
 // Initialize error message and username input variable
 $error = "";

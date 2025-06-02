@@ -3,8 +3,8 @@ header('Content-Type: application/json');
 
 // Database configuration (replace with your actual credentials)
 $db_host = 'localhost';
-$db_user = 'user';
-$db_pass = 'password';
+$db_user = 'logger';
+$db_pass = 'logger';
 $db_name = 'ciscoLogger';
 
 // Get IP address from GET request

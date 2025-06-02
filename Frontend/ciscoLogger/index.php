@@ -4,9 +4,9 @@ session_start(); // Start the session to access session variables
 // Check if the 'username' session variable is NOT set
 if (!isset($_SESSION['username'])) {
     // If the user is not logged in, redirect them to the login page.
-    // Adjust the path to your login.php file if it's not in the root directory.
-    header("Location: /login.php"); // Example: if login.php is in the root
-    // header("Location: ../login.php"); // Example: if login.php is one level up
+    // Adjust the path to your index.php file if it's not in the root directory.
+    header("Location: /index.php"); // Example: if index.php is in the root
+    // header("Location: ../index.php"); // Example: if index.php is one level up
     exit(); // Important: Always exit after a header redirect to prevent further script execution
 }
 
@@ -49,7 +49,7 @@ if (!isset($_SESSION['username'])) {
         .logout-button {
             display: inline-block;
             padding: 10px 20px;
-            background-color: #dc3545;
+            background-color:rgb(220, 53, 69);
             color: white;
             border: none;
             border-radius: 5px;
@@ -58,7 +58,7 @@ if (!isset($_SESSION['username'])) {
             transition: background-color 0.3s ease;
         }
         .logout-button:hover {
-            background-color: #c82333;
+            background-color:rgb(200, 35, 51);
         }
         .logger {
             display: inline-block;
@@ -73,10 +73,24 @@ if (!isset($_SESSION['username'])) {
             transition: background-color 0.3s ease;
         }
         .logger:hover {
-            background-color: #c82333;
+            background-color:rgb(34, 91, 198);
+        }
+        .user-management {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color:rgb(53, 111, 220);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 20px;
+            margin-right: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .user-management:hover {
+            background-color:rgb(34, 91, 198);
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -84,6 +98,9 @@ if (!isset($_SESSION['username'])) {
         <table>
             <tr>
                 <a href="/ciscoLogger/logger.php" class="logger">Logger</a>
+            </tr>
+            <tr>
+                <a href="/ciscoLogger/user-management.php" class="user-management">Users</a>
             </tr>
             <tr>
                 <a href="/logout.php" class="logout-button">Logout</a>

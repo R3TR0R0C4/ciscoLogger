@@ -1,7 +1,7 @@
 /* styles.css - Styling for the login page */
 @font-face {
     font-family: 'Hacked';
-    src: url('/css/typography/HACKED/HACKED.ttf') format('truetype');
+    src: url('/assets/css/typography/HACKED/HACKED.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
