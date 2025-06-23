@@ -79,6 +79,7 @@
         <a href="lookups/description_search.php" class="button">Description</a>
         <a href="port_history.php" class="button">Historics</a>
         <a href="port_history_summary.php" class="button">Historics Summary</a>
+        <a href="port_stats.php" class="button">Port Stats</a>
         <a href="/logout.php" class="logout-button">Logout</a>
     </div>
     <div id="tabs-container">

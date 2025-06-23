@@ -18,14 +18,14 @@ def cleanup_old_data(json_database_details):
 
         spanish_timezone = pytz.timezone('Europe/Madrid')
 
-        cutoff_date = (datetime.now(spanish_timezone) - timedelta(days=5)).strftime('%Y-%m-%d %H:%M:%S')
+        cutoff_date = (datetime.now(spanish_timezone) - timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
 
         delete_query = "DELETE FROM interface_stats_history WHERE archived_at < ?"
         cursor.execute(delete_query, (cutoff_date,))
         deleted_rows = cursor.rowcount
         conn.commit()
 
-        print(f"Deleted {deleted_rows} entries older than 5 days from interface_stats_history.")
+        print(f"Deleted {deleted_rows} entries older than 30 days from interface_stats_history.")
 
     except mariadb.Error as e:
         print(f"Error deleting old entries from MariaDB: {e}")

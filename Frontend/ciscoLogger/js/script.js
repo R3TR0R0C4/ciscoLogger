@@ -39,7 +39,15 @@ $(document).ready(function() {
 
                     tableHtml += '<tr class="' + rowClass + '">';
                     columnsToDisplay.forEach(key => {
-                        tableHtml += '<td>' + (row[key] !== null ? htmlEscape(row[key]) : '') + '</td>';
+                        if (key === 'interface_name') {
+                            tableHtml += `<td>
+                              <a class=link_port href="port_history_summary.php?switch=${encodeURIComponent(switchIp)}&port=${encodeURIComponent(row[key])}" target="_blank">
+                                ${htmlEscape(row[key])}
+                              </a>
+                            </td>`;
+                        } else {
+                            tableHtml += '<td>' + (row[key] !== null ? htmlEscape(row[key]) : '') + '</td>';
+                        }
                     });
                     tableHtml += '</tr>';
                 });
