@@ -1,28 +1,17 @@
 <?php
-session_start(); // Start the session to access session variables
-
-// Check if the 'username' session variable is NOT set
+session_start();
 if (!isset($_SESSION['username'])) {
-    // If the user is not logged in, redirect them to the login page.
-    // Adjust the path to your index.php file if it's not in the root directory.
-    header("Location: /index.php"); // Example: if index.php is in the root
-    // header("Location: ../index.php"); // Example: if index.php is one level up
-    exit(); // Important: Always exit after a header redirect to prevent further script execution
+    header("Location: /index.php");
+    exit();
 }
 
-// If the user IS logged in, the script will continue past this point,
-// allowing the rest of the content in this file (or included files) to be displayed.
-
-// --- Your ciscoLogger content goes here ---
-// For example, you might have:
-// echo "Welcome to the Cisco Logger area, " . htmlspecialchars($_SESSION['username']) . "!";
-// include 'display_logs.php'; // Include other files specific to ciscoLogger functionality
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
     <title>Cisco Logger</title>
     <style>
         body {

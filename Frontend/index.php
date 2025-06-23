@@ -1,36 +1,24 @@
 <?php
 session_start();
 
-// --- Database Credentials ---
-// IMPORTANT: Replace these with your actual MariaDB database credentials.
-// For security, consider storing these outside the web root or using environment variables.
-define('DB_HOST', 'localhost');         // Your database host (e.g., 'localhost', '127.0.0.1')
-define('DB_NAME', 'ciscoLogger'); // Your database name
-define('DB_USER', 'logger');   // Your database username
-define('DB_PASS', 'logger');   // Your database password
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'ciscoLogger');
+define('DB_USER', 'logger');
+define('DB_PASS', 'logger');
 
-// Initialize error message and username input variable
 $error = "";
-$username_input = ""; // Stores the username entered by the user in the form
+$username_input = "";
 
-// --- Establish Database Connection ---
-// Using PDO (PHP Data Objects) for a secure and modern way to interact with databases.
 try {
     $pdo = new PDO(
         "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
         DB_USER,
         DB_PASS
     );
-    // Set PDO error mode to exception for better error handling during development
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    // Set default fetch mode to associative array
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // If connection fails, set an error message.
-    // In a production environment, you should log this error and show a generic message to the user
-    // instead of the detailed error message for security reasons.
     $error = "Database connection failed. Please try again later.";
-    // For debugging: error_log("Database connection error: " . $e->getMessage());
 }
 
 // --- Handle Login Form Submission ---

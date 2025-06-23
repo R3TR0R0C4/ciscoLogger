@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Description Lookup</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon.png">
+</head>
+<body>
+    <div class="container">
+        <h1>Description Lookup</h1>
+
+        <form action="description_search.php" method="GET">
+            <div class="form-group">
+                <label for="description">Input Description:</label>
+                <input type="text" id="description" name="description" placeholder="Ex: PB-C12" value="<?php echo isset($_GET['description']) ? htmlspecialchars($_GET['description']) : ''; ?>">
+            </div>
+            <div class="form-group">
+                <button type="submit">Search</button>
+            </div>
+        </form>
+
+        <?php
+        header('Content-Type: text/html');      
+        $db_host = 'localhost';
+        $db_user = 'logger';
+        $db_pass = 'logger';
+        $db_name = 'ciscoLogger';
+
+        $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+
+        if ($conn->connect_error) {
+            die("<p class='error-message'>Error de conexión a la base de datos: " . $conn->connect_error . "</p>");
+        }
+
+        if (isset($_GET['description']) && !empty($_GET['description'])) {
+            $query = "SELECT * FROM interface_stats WHERE description LIKE ?";
+            $search_description_pattern = '%' . $_GET['description'] . '%';
+
+            $stmt = $conn->prepare($query);
+
+            if ($stmt === false) {
+                echo "<p class='error-message'>Error al preparar la consulta: " . $conn->error . "</p>";
+            } else {
+                $stmt->bind_param("s", $search_description_pattern);
+                $stmt->execute();
+                $result = $stmt->get_result();
+
+                if ($result->num_rows > 0) {
+                    echo "<h2>Results</h2>";
+                    echo "<table class='results-table'>";
+                    echo "<thead><tr>";
+                    echo "<th>Switch IP</th><th>Interface</th><th>Description</th><th>MAC Address</th><th>VLAN</th><th>Switchport</th>";
+                    echo "</tr></thead><tbody>";
+                    while ($row = $result->fetch_assoc()) {
+                        echo "<tr>";
+                        echo "<td>" . htmlspecialchars($row['switch']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['interface_name']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['description']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['mac']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['vlan']) . "</td>";
+                        echo "<td>" . htmlspecialchars($row['switchport']) . "</td>";
+                        echo "</tr>";
+                    }
+                    echo "</tbody></table>";
+                } else {
+                    echo "<p class='no-results-message'>No results found for the given description.</p>";
+                }
+                $stmt->close();
+            }
+        } else {
+            echo "<p class='no-results-message'>Please, enter a description to lookup.</p>";
+        }
+        ?>
+
+        <a href="../logger.php" class="back-button">Return to Logger</a>
+    </div>
+</body>
+</html>
+
+<?php
+$conn->close();
+?>

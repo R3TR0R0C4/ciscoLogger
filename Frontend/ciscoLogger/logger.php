@@ -75,23 +75,21 @@
         }
         ?>
 
-      <a href="mac_search.php" class="button">MAC</a>
-      <a href="port_history.php" class="button">Historics</a>
-      <a href="/logout.php" class="logout-button">Logout</a>
+        <a href="lookups/mac_search.php" class="button">MAC</a>
+        <a href="lookups/description_search.php" class="button">Description</a>
+        <a href="port_history.php" class="button">Historics</a>
+        <a href="port_history_summary.php" class="button">Historics Summary</a>
+        <a href="/logout.php" class="logout-button">Logout</a>
     </div>
     <div id="tabs-container">
         <?php
 
-        session_start(); // Start the session to access session variables
-
-        // Check if the 'username' session variable is NOT set
+        session_start();
         if (!isset($_SESSION['username'])) {
-            // If the user is not logged in, redirect them to the login page.
-            header("Location: /index.php"); // Adjust path as needed
-            exit(); // Important: Always exit after a header redirect
+            header("Location: /index.php");
+            exit();
         }
 
-        // Database configuration (replace with your actual credentials)
         $db_host = 'localhost';
         $db_user = 'logger';
         $db_pass = 'logger';
@@ -104,14 +102,13 @@
         }
 
         $switches_data = [];
-        // **** MODIFIED QUERY HERE ****
         $sql_switches = "SELECT ip_address, hostname FROM network_devices ORDER BY ip_address ASC";
         $result_switches = $conn->query($sql_switches);
 
         if ($result_switches && $result_switches->num_rows > 0) {
             while ($row = $result_switches->fetch_assoc()) {
                 $switches_data[] = [
-                    'ip' => htmlspecialchars($row['ip_address']), // Use ip_address from network_devices
+                    'ip' => htmlspecialchars($row['ip_address']),
                     'hostname' => htmlspecialchars($row['hostname'])
                 ];
             }

@@ -15,7 +15,13 @@ if ($conn->connect_error) {
 
 if (isset($_GET['switch'])) {
     $switch = $_GET['switch'];
-    $stmt = $conn->prepare("SELECT DISTINCT interface_name FROM interface_stats_history WHERE switch = ? ORDER BY interface_name ASC");
+    $query = "
+        SELECT DISTINCT interface_name
+        FROM interface_stats_history
+        WHERE switch = ?
+        ORDER BY CAST(REGEXP_SUBSTR(interface_name, '[0-9]+$') AS UNSIGNED), interface_name ASC
+    ";
+    $stmt = $conn->prepare($query);
     $stmt->bind_param("s", $switch);
     $stmt->execute();
     $result = $stmt->get_result();

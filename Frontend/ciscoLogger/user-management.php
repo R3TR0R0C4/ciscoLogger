@@ -1,14 +1,10 @@
 <?php
-
-session_start(); // Start the session to access session variables
-
-// Check if the 'username' session variable is NOT set
+session_start();
 if (!isset($_SESSION['username'])) {
-    // If the user is not logged in, redirect them to the index page.
-    header("Location: /index.php"); // Adjust path as needed
-    exit(); // Important: Always exit after a header redirect
+    header("Location: /index.php");
+    exit();
 }
-// Configuración de la base de datos (reemplaza con tus credenciales si son diferentes)
+
 $db_host = 'localhost';
 $db_user = 'logger';
 $db_pass = 'logger';
@@ -20,9 +16,8 @@ if ($conn->connect_error) {
     die("Error de conexión a la base de datos: " . $conn->connect_error);
 }
 
-$message = ''; // Para mostrar mensajes de éxito o error
+$message = '';
 
-// Lógica para añadir un nuevo usuario
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_user') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
@@ -30,13 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (empty($username) || empty($password)) {
         $message = '<p class="error-message">El nombre de usuario y la contraseña no pueden estar vacíos.</p>';
     } else {
-        // Encriptar la contraseña con bcrypt (costo 10)
-        // PASSWORD_BCRYPT es el algoritmo recomendado y por defecto usa un costo de 10 si no se especifica.
-        // Sin embargo, podemos especificarlo explícitamente para claridad.
         $options = ['cost' => 10];
         $password_hash = password_hash($password, PASSWORD_BCRYPT, $options);
 
-        // Preparamos la consulta para insertar el usuario
         $stmt = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
 
         if ($stmt === false) {
@@ -46,8 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if ($stmt->execute()) {
                 $message = '<p class="success-message">Usuario "' . htmlspecialchars($username) . '" creado exitosamente.</p>';
             } else {
-                // Error por nombre de usuario duplicado u otro error de la base de datos
-                if ($conn->errno == 1062) { // 1062 es el código de error para entrada duplicada (UNIQUE constraint)
+                if ($conn->errno == 1062) {
                     $message = '<p class="error-message">Error: El nombre de usuario "' . htmlspecialchars($username) . '" ya existe.</p>';
                 } else {
                     $message = '<p class="error-message">Error al crear el usuario: ' . $stmt->error . '</p>';
@@ -58,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Lógica para obtener usuarios existentes
 $users = [];
 $sql_users = "SELECT id, username FROM users ORDER BY username ASC";
 $result_users = $conn->query($sql_users);
@@ -85,7 +74,6 @@ $conn->close();
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
     <style>
-        /* Estilos específicos para esta página que pueden ir en style.css si quieres */
         .container {
             max-width: 800px;
             margin: 20px auto;
@@ -148,19 +136,19 @@ $conn->close();
             background-color: #f1f1f1;
         }
         .success-message {
-            color: #28a745; /* Verde */
+            color: #28a745;
             font-weight: bold;
             margin-bottom: 15px;
         }
-        .error-message { /* Ya existe en style.css, pero lo dejo aquí para referencia */
-            color: #dc3545; /* Rojo */
+        .error-message {
+            color: #dc3545;
             font-weight: bold;
             margin-bottom: 15px;
         }
-        .back-button { /* Reutiliza el estilo del botón 'back-button' */
+        .back-button {
             display: inline-block;
             margin-top: 20px;
-            background-color: #6c757d; /* Color gris para el botón de volver */
+            background-color: #6c757d;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -178,7 +166,7 @@ $conn->close();
     <div class="container">
         <h1>Gestionar Usuarios</h1>
 
-        <?php echo $message; // Mostrar mensajes de éxito o error ?>
+        <?php echo $message?>
 
         <h2>Añadir Nuevo Usuario</h2>
         <form action="/ciscoLogger/user-management.php" method="POST">

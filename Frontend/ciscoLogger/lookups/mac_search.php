@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscar MAC</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.png">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon.png">
     </head>
 <body>
     <div class="container">
@@ -80,7 +80,7 @@
         }
         ?>
 
-        <a href="logger.php" class="back-button">Return to Index</a>
+        <a href="../logger.php" class="back-button">Return to Index</a>
     </div>
 </body>
 </html>
